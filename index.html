@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sweetspire Studio</title>
+<style>
+  :root {
+    /* Cream-light palette: tones visible through the canopy gaps. */
+    --sun-top:    #F0F1E7;   /* coolest off-white */
+    --sun-mid:    #EFEED6;   /* warm cream */
+    --sun-bot:    #E9ECDE;   /* faintly green-tinted off-white */
+
+    /* Sage palette: the base shadow color (visible under leaves) and a
+       step-deeper sage for the hero background gradient depth. */
+    --shadow:     #D8DDC6;
+    --shadow-deep:#b8c0a3;
+
+    /* The solid color the page scrolls down to — matches the footer's
+       off-white so the section and footer read as the same surface,
+       with the canopy gradient blending into that surface up top. */
+    --page-color: #ffffff;
+
+    /* Accent: used for the "active" nav link indicating which page the
+       user is on. A warm muted gold/amber chosen to pair with the
+       sage/cream palette without clashing. */
+    --accent: #c9a14a;
+
+    /* How far the .below-hero section overlaps up into the hero. This is
+       the SINGLE source of truth — used both for the negative margin
+       that creates the overlap and for the gradient stops that fade the
+       page in past the seam. Change this in one place and everything
+       stays in sync. */
+    --hero-overlap: 30vh;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 100%;
+    /* No fixed height; allow the page to scroll. */
+    background: var(--page-color);
+    /* Smooth scrolling for anchor jumps and nav interactions */
+    scroll-behavior: smooth;
+    /* Prevent any horizontal scroll. The parallax light layers inside the
+       hero scale and translate slightly past 100%, which would otherwise
+       push the page right by a few pixels. Clip horizontally only — vertical
+       scrolling stays untouched. */
+    overflow-x: hidden;
+  }
+
+  body {
+    font-family: 'Cormorant Garamond', 'Georgia', serif;
+    /* Total scrollable height: hero is 100vh, plus more below.
+       We let content determine the height. */
+    min-height: 100vh;
+  }
+
+  /* ------------------------------------------------------------------
+     HERO SECTION — the dappled canopy scene.
+     This is the full first viewport. Inside it sits the layered
+     SVG canopy, the moving light spots, the grain, and the title.
+     ------------------------------------------------------------------ */
+  .hero {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    /* Clip horizontally only — the parallax light layers scale up to 1.06
+       and translate up to 2.5%, which pushes their edges past 100% width
+       and was causing the page to scroll right. overflow-x: clip contains
+       the parallax inside the hero without affecting vertical layering, so
+       .below-hero can still overlap up into the hero via negative margin. */
+    overflow-x: clip;
+    background: linear-gradient(
+      170deg,
+      var(--shadow) 0%,
+      var(--shadow-deep) 100%
+    );
+  }
+
+  /* ------------------------------------------------------------------
+     CANOPY SCENE — sole rendered SVG carrying the dappled canopy.
+     Sized OVERSIZED (110% width/height with -5% offsets) so that the
+     mask's animateTransform can slide the shadow pattern across user
+     space without ever exposing the SVG's edges. The .hero's
+     overflow-x: clip handles the visible viewport crop.
+     ------------------------------------------------------------------ */
+  .canopy-scene {
+    position: absolute;
+    top: -5%;
+    left: -5%;
+    width: 110%;
+    height: 110%;
+    z-index: 2;
+    pointer-events: none;
+    display: block;
+    will-change: opacity;
+  }
+
+  .cream-rect {
+    fill: url(#cream-gradient);
+  }
+
+  /* ------------------------------------------------------------------
+     MOTION — bumped up noticeably from the previous version.
+     - Larger translate amounts (~2-3% instead of ~0.5-1%)
+     - Larger rotations
+     - Scale pulsing as well
+     - Each layer animates independently
+     ------------------------------------------------------------------ */
+  /* Each spot layer has its own slow drift + scale + rotation, plus
+     an independent opacity breathing cycle on a different timing.
+     IMPORTANT: do NOT set CSS `filter` on these groups — that would
+     override the SVG `filter="url(#blur-...)"` attribute on the
+     <g> elements, making the heavy SVG blur disappear and leaving
+     near-solid shapes. */
+  .spots-mid {
+    transform-origin: 50% 50%;
+    transform-box: fill-box;
+    animation-name: spots-mid, breathe-mid;
+    animation-duration: 29s, 19s;
+    animation-iteration-count: infinite, infinite;
+    animation-timing-function: ease-in-out, ease-in-out;
+  }
+  .spots-front {
+    transform-origin: 50% 50%;
+    transform-box: fill-box;
+    animation-name: spots-front, breathe-front;
+    animation-duration: 23s, 17s;
+    animation-iteration-count: infinite, infinite;
+    animation-timing-function: ease-in-out, ease-in-out;
+  }
+
+  @keyframes spots-mid {
+    0%, 100% { transform: translate(0, 0) scale(1) rotate(0deg); }
+    50%      { transform: translate(-3.4%, 2.2%) scale(0.92) rotate(-2.6deg); }
+  }
+  @keyframes spots-front {
+    0%, 100% { transform: translate(0, 0) scale(1) rotate(0deg); }
+    50%      { transform: translate(4.0%, -2.4%) scale(1.08) rotate(3deg); }
+  }
+
+  @keyframes breathe-mid {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.8; }
+  }
+  @keyframes breathe-front {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.9; }
+  }
+
+  /* (gradient transition is now inside .section as a background gradient
+     rather than an overlay element) */
+
+
+  .grain {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 3;
+    pointer-events: none;
+    opacity: 0.3;
+    mix-blend-mode: multiply;
+    display: block;
+  }
+
+  /* ------------------------------------------------------------------
+     HERO TITLE — now white text
+     ------------------------------------------------------------------ */
+  .hero-title {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    pointer-events: none;
+  }
+  .hero-title h1 {
+    font-size: clamp(3rem, 8vw, 6rem);
+    font-weight: 300;
+    letter-spacing: 0.02em;
+    color: #ffffff;
+    font-style: italic;
+    /* Soft glow to keep the title legible whether sitting on cream or shadow */
+    text-shadow: 0 2px 30px rgba(0, 0, 0, 0.25), 0 0 60px rgba(0, 0, 0, 0.15);
+  }
+  .hero-title p {
+    font-size: 0.85rem;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: #8c8f74; /* desaturated medium-green for "creative studio" */
+    margin-top: 1.5rem;
+    font-family: 'Helvetica Neue', sans-serif;
+    font-weight: 400;
+    /* Slightly heavier shadow than before — the subtitle is now darker
+       than the canopy in some spots, so the shadow earns it legibility
+       both over light dapples and shadow patches. */
+    text-shadow: 0 1px 12px rgba(255, 255, 255, 0.35), 0 1px 3px rgba(0, 0, 0, 0.18);
+    opacity: 0.95;
+  }
+
+  /* ------------------------------------------------------------------
+     HAMBURGER NAVIGATION
+     All white. Sits in top-right of viewport. When clicked, the nav
+     expands as a horizontal bar across the full top of the page.
+     ------------------------------------------------------------------ */
+  .nav {
+    position: fixed;
+    /* Shift the bar's top edge down 8px so its vertical center (at
+       8 + 80/2 = 48px) aligns with the hamburger button's center
+       (top: 28px + height: 40px / 2 = 48px). */
+    top: 8px;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    pointer-events: none;
+  }
+
+  .nav-bar {
+    position: relative;
+    width: 100%;
+    /* Reserve room on the right so links never collide with the fixed
+       hamburger button. Hamburger is 40px wide at right: 32px from
+       viewport edge — so its left edge is at right: 72px. We add ~48px
+       of breathing room past that, matching the 48px left padding for
+       a symmetric inset on both sides of the link container. */
+    padding-right: 120px;
+    padding-left: 3rem;
+    /* Starts as a thin invisible strip; expands into a full bar when open */
+    height: 0;
+    background: transparent;
+    transition:
+      height     0.5s cubic-bezier(0.4, 0, 0.2, 1),
+      background 0.5s ease;
+    pointer-events: auto;
+    overflow: hidden;
+  }
+
+  /* Open state: off-white paper panel.
+     - Background is a vertical gradient that fades from transparent at the
+       top edge into a near-opaque off-white at the bottom. This lets the
+       canopy still show through the top sliver instead of slamming into
+       a hard edge, while the body of the bar reads as a paper surface.
+     - The .nav-paper element (placed inside .nav-bar) provides the grain
+       overlay so the panel keeps the same tactile texture as the hero. */
+  .nav.open .nav-bar {
+    height: 80px;
+    background: linear-gradient(
+      to bottom,
+      rgba(247, 244, 232, 0.0)  0%,
+      rgba(247, 244, 232, 0.55) 30%,
+      rgba(247, 244, 232, 0.92) 70%,
+      rgba(247, 244, 232, 0.96) 100%
+    );
+  }
+
+  /* Paper grain overlay specifically for the nav bar.
+     Sits inside .nav-bar, fills it, with multiply blend mode so it adds
+     subtle noise/texture without flattening the background gradient.
+     Only visible when the bar is open (it's clipped by .nav-bar's height). */
+  .nav-paper {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.35;
+    mix-blend-mode: multiply;
+    display: block;
+    /* The grain itself should fade with the same gradient as the background
+       so the top edge stays soft and texture doesn't appear out of nowhere
+       at the boundary. mask-image does this without affecting the SVG. */
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      black 35%,
+      black 100%
+    );
+            mask-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      black 35%,
+      black 100%
+    );
+  }
+
+  /* Menu links — live in normal flow inside .nav-bar so they respect
+     the bar's right-side padding reservation for the hamburger. Sized
+     responsively with clamp() so they scale down on narrow widths
+     rather than colliding with the hamburger. */
+  .nav-links {
+    position: relative;
+    z-index: 1; /* above .nav-paper grain overlay */
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    /* Anchor links at the left edge of the bar's content area and spread
+       them across the full available width (which is already bounded on
+       the right by .nav-bar's padding-right reservation for the
+       hamburger). First link sits at the left, last link sits just
+       inside the hamburger reserve. */
+    justify-content: space-between;
+    /* gap is no longer the main spacer with space-between — flex
+       distributes remaining space evenly. We keep a min-gap as a floor
+       so links never touch if the bar gets very narrow. */
+    gap: clamp(0.6rem, 1.5vw, 1.5rem);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    transition-delay: 0s;
+    /* Allow the flex container to shrink below its content width if needed,
+     so the bar never overflows or pushes the hamburger. */
+    min-width: 0;
+  }
+
+  .nav.open .nav-links {
+    opacity: 1;
+    transition-delay: 0.25s;
+  }
+
+  .nav-links a {
+    color: #8c8f74; /* matches the "creative studio" subtitle */
+    text-decoration: none;
+    font-family: 'Helvetica Neue', sans-serif;
+    font-weight: 500;
+    /* Font scales with viewport width — small at narrow, original 0.85rem
+       at desktop sizes. Letter-spacing also tightens slightly on narrow
+       widths so links don't smear together. */
+    font-size: clamp(0.62rem, 1.05vw, 0.85rem);
+    letter-spacing: clamp(0.15em, 0.3vw, 0.3em);
+    text-transform: uppercase;
+    white-space: nowrap;
+    transition: opacity 0.2s ease, color 0.2s ease;
+  }
+  .nav-links a:hover {
+    opacity: 0.65;
+  }
+  /* Active state: the link representing the current page. Uses the
+     warm gold accent. Slightly heavier weight reinforces "you are here". */
+  .nav-links a.active {
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .nav-links a.active:hover {
+    opacity: 1; /* no fade-on-hover for active — it's already a clear state */
+  }
+
+  /* Hamburger button — sits above the bar at top-right of viewport */
+  .nav-toggle {
+    position: fixed;
+    top: 28px;
+    right: 32px;
+    width: 40px;
+    height: 40px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    z-index: 101;
+    padding: 0;
+    pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .nav-toggle span {
+    display: block;
+    width: 28px;
+    height: 2px;
+    background: #ffffff;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  /* Animate hamburger into an X when open */
+  .nav.open + .nav-toggle span:nth-child(1),
+  .nav.open ~ .nav-toggle span:nth-child(1) {
+    transform: translateY(8px) rotate(45deg);
+  }
+  .nav.open + .nav-toggle span:nth-child(2),
+  .nav.open ~ .nav-toggle span:nth-child(2) {
+    opacity: 0;
+  }
+  .nav.open + .nav-toggle span:nth-child(3),
+  .nav.open ~ .nav-toggle span:nth-child(3) {
+    transform: translateY(-8px) rotate(-45deg);
+  }
+
+  /* ------------------------------------------------------------------
+     BELOW-HERO CONTAINER — an empty container that extends the page
+     down past the hero. It starts slightly BEFORE the hero ends
+     (negative margin-top) and sits z-indexed ABOVE the dapple scene,
+     so its top edge overlaps the bottom of the canopy.
+
+     Inside it, the .section provides the actual page content area.
+     The section's background is a linear gradient that starts FULLY
+     TRANSPARENT at the top (within the overlap zone, so the canopy
+     shows through) and fades to solid --page-color by the time the
+     overlap ends — creating a smooth blend.
+     ------------------------------------------------------------------ */
+  .below-hero {
+    position: relative;
+    width: 100%;
+    /* Negative margin pulls this container up by --hero-overlap so its
+       top edge lands that far above the hero's bottom — that distance
+       IS our overlap zone. */
+    margin-top: calc(-1 * var(--hero-overlap));
+    z-index: 6; /* above .light-layer (2), grain (3), hero-title (5) */
+    pointer-events: auto;
+  }
+
+  .section {
+    width: 100%;
+    /* Total height = full viewport of readable content + the overlap zone
+       sitting above the seam. */
+    min-height: calc(100vh + var(--hero-overlap));
+    /* Top padding pushes content below the overlap zone so it starts at
+       the seam, not inside the canopy. */
+    padding: var(--hero-overlap) 8vw 6rem;
+    color: #5a5d3e;
+    /* The opacity gradient exists ONLY inside the overlap zone — the
+       top --hero-overlap of the section's height. The section's top
+       edge is fully transparent (so the canopy reads through cleanly),
+       and the section hits FULLY SOLID a little before it reaches the
+       seam (at 85% of the overlap distance). This gives the solid
+       --page-color a few vh of cushion ABOVE the hero's bottom edge,
+       so any faint residual seam-line falls inside the solid region
+       and is hidden. Below the overlap zone, the section is uniformly
+       solid --page-color forever — no further fading.
+
+       Intermediate stops use rgba(255, 255, 255, x) so the gradient
+       blends through translucent white toward the solid white
+       --page-color — gradient shape and stop positions unchanged
+       from when the destination was sage-cream. */
+    background: linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0)    0,
+      rgba(255, 255, 255, 0.15) calc(var(--hero-overlap) * 0.30),
+      rgba(255, 255, 255, 0.45) calc(var(--hero-overlap) * 0.55),
+      rgba(255, 255, 255, 0.8)  calc(var(--hero-overlap) * 0.75),
+      var(--page-color)         calc(var(--hero-overlap) * 0.85),
+      var(--page-color)         100%
+    );
+  }
+
+  .section h2 {
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 300;
+    font-style: italic;
+    margin-bottom: 1.5rem;
+    color: #5a5d3e;
+  }
+
+  .section h3 {
+    font-size: clamp(1.3rem, 2.2vw, 1.6rem);
+    font-weight: 400;
+    font-style: italic;
+    margin-top: 2.5rem;
+    margin-bottom: 1rem;
+    color: #5a5d3e;
+    letter-spacing: 0.01em;
+  }
+
+  .section p {
+    font-size: 1.1rem;
+    line-height: 1.7;
+    max-width: 60ch;
+    margin-bottom: 1.2rem;
+    color: #6b6e4a;
+  }
+
+  /* Services list — kept understated, no bullets, just a hairline rule
+     between items so they read like a quiet menu rather than a UL. */
+  .section .services {
+    list-style: none;
+    max-width: 60ch;
+    margin: 0 0 1.5rem;
+    padding: 0;
+  }
+  .section .services li {
+    font-size: 1.05rem;
+    line-height: 1.65;
+    padding: 0.85rem 0;
+    border-top: 1px solid rgba(90, 93, 62, 0.18);
+    color: #6b6e4a;
+  }
+  .section .services li:last-child {
+    border-bottom: 1px solid rgba(90, 93, 62, 0.18);
+  }
+  .section .services strong {
+    color: #5a5d3e;
+    font-weight: 500;
+  }
+
+  /* ------------------------------------------------------------------
+     FOOTER
+     White panel that sits at the bottom of the page. Dark text in the
+     same olive/sage palette as the body copy. Kept low-key so it
+     doesn't fight the dappled-light feeling of the rest of the page.
+     ------------------------------------------------------------------ */
+  .site-footer {
+    background: #ffffff;
+    color: #5a5d3e;
+    padding: 4rem 8vw 2rem;
+    font-family: 'Cormorant Garamond', 'Georgia', serif;
+  }
+
+  .footer-inner {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2.5rem;
+    justify-content: space-between;
+    /* Center vertically so the nav links sit at the visual midpoint between
+       "sweetspire studio" and "creative studio" rather than pinned to the top. */
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding-bottom: 2.5rem;
+    border-bottom: 1px solid rgba(90, 93, 62, 0.18);
+  }
+
+  .footer-brand .footer-mark {
+    font-size: 1.8rem;
+    font-style: italic;
+    font-weight: 300;
+    color: #5a5d3e;
+    margin: 0;
+    line-height: 1;
+  }
+  .footer-brand .footer-tag {
+    font-family: 'Helvetica Neue', sans-serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: #6b6e4a;
+    margin-top: 0.6rem;
+    font-weight: 300;
+  }
+
+  .footer-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.75rem;
+    align-items: center;
+  }
+  .footer-nav a {
+    font-family: 'Helvetica Neue', sans-serif;
+    font-size: 0.75rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: #8c8f74; /* matches top nav + "creative studio" subtitle */
+    text-decoration: none;
+    font-weight: 500;
+    transition: opacity 0.2s ease;
+  }
+  .footer-nav a:hover {
+    opacity: 0.65;
+  }
+  .footer-nav a.active {
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .footer-nav a.active:hover {
+    opacity: 1;
+  }
+
+  .footer-bottom {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding-top: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+  .footer-bottom p {
+    font-family: 'Helvetica Neue', sans-serif;
+    font-size: 0.75rem;
+    color: #8a8d6e;
+    margin: 0;
+    letter-spacing: 0.05em;
+  }
+
+  /* Below ~800px the footer content stacks vertically. Center everything
+     in this state — brand block, nav links, copyright line, tagline —
+     so the stacked layout reads as a tidy centered column rather than
+     content awkwardly pinned to opposite sides of a narrowed page. */
+  @media (max-width: 1024px) {
+    .footer-inner {
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 2rem;
+    }
+    .footer-brand {
+      text-align: center;
+    }
+    .footer-nav {
+      justify-content: center;
+    }
+  }
+
+  @media (max-width: 800px) {
+    .footer-bottom {
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 0.4rem;
+    }
+  }
+
+  /* Hide the footer nav on mobile — the same five links live in the
+     always-accessible hamburger nav at the top, so they're redundant
+     here at narrow widths where they would otherwise wrap into a messy
+     pile below the brand block. The brand mark + tagline carry the
+     footer on its own at small sizes. */
+  @media (max-width: 768px) {
+    .footer-nav {
+      display: none;
+    }
+    /* With the nav gone, the brand block sits alone — let it center
+       in the available space instead of being pinned to the left edge
+       by the space-between justification. */
+    .footer-inner {
+      justify-content: center;
+      text-align: center;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .spots-mid, .spots-front,
+    .canopy-scene { animation: none; }
+    /* SMIL animations inside .canopy-scene (animateTransform, animated
+       seed in the turbulence filter) can't be disabled via CSS — they'd
+       need to be paused with JS or removed. We leave them running here;
+       motion-sensitive users will still see displacement and translate
+       inside the canopy, but the heavy CSS animations on spots stop. */
+    html { scroll-behavior: auto; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HAMBURGER NAVIGATION -->
+<nav class="nav" id="nav">
+  <div class="nav-bar">
+    <!-- Paper grain overlay for the nav bar — same technique as the hero
+         grain, but scoped here with its own filter id. Sits underneath the
+         link text but above the background gradient (z-index handled by
+         .nav-links sitting at z-index: 1). -->
+    <svg class="nav-paper" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+      <filter id="navPaperGrain" x="0" y="0" width="100%" height="100%">
+        <feTurbulence type="fractalNoise" baseFrequency="3.5" numOctaves="2" stitchTiles="stitch"/>
+        <feColorMatrix values="0 0 0 0 0.20
+                               0 0 0 0 0.22
+                               0 0 0 0 0.18
+                               0 0 0 0.65 0"/>
+      </filter>
+      <rect width="100%" height="100%" filter="url(#navPaperGrain)"/>
+    </svg>
+    <div class="nav-links">
+      <a href="index.html" class="active">Home</a>
+      <a href="about.html">About</a>
+      <a href="gallery.html">Gallery</a>
+      <a href="services.html">Services</a>
+      <a href="social.html">Social</a>
+      <a href="contact.html">Contact</a>
+    </div>
+  </div>
+</nav>
+<button class="nav-toggle" id="navToggle" aria-label="Toggle menu">
+  <span></span>
+  <span></span>
+  <span></span>
+</button>
+
+<!-- HERO: dappled canopy scene -->
+<section class="hero">
+
+  <!--
+    ================================================================
+    CANOPY SCENE — single-stack architecture.
+
+    Three rendered layers stacked inside one SVG:
+      1. BASE: solid sage-green rect (the "shadow under the canopy" color)
+      2. LIGHT: cream gradient rect, MASKED by the tree silhouettes so
+         it only shows in the gaps between leaves
+      3. SPOTS: small/medium cream ellipses for highlights, masked the
+         same way
+
+    All animated motion lives ON THE MASK CONTENT, where it actually
+    works — via SMIL inside the SVG render pipeline. The mask gets:
+      - feDisplacementMap fed by an animated feTurbulence — bends each
+        boundary point by a different amount (leaves bending in wind)
+      - animateTransform translating the silhouette across user space
+        (whole shadow pattern travels like wind moving the canopy)
+
+    The SVG is intentionally OVERSIZED (-10% to 110% on each axis,
+    via wrapper) so motion has bleed room and never exposes edges.
+    The .hero's overflow-x: clip handles the viewport clip.
+    ================================================================
+  -->
+  <svg class="canopy-scene" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <!-- Cream gradient with several color stops for variation -->
+      <linearGradient id="cream-gradient" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%"  stop-color="#F0F1E7"/>
+        <stop offset="50%" stop-color="#EFEED6"/>
+        <stop offset="100%" stop-color="#E9ECDE"/>
+      </linearGradient>
+
+      <!-- Blurs for spot highlights -->
+      <filter id="blur-front" x="-75%" y="-75%" width="250%" height="250%">
+        <feGaussianBlur stdDeviation="14"/>
+      </filter>
+      <filter id="blur-mid" x="-100%" y="-100%" width="300%" height="300%">
+        <feGaussianBlur stdDeviation="28"/>
+      </filter>
+
+      <!--
+        DISPLACEMENT FILTER for the mask content.
+
+        TECHNIQUE: static turbulence + animated feOffset.
+
+        The turbulence noise field is FIXED (no animated seed). But
+        between feTurbulence and feDisplacementMap, an feOffset
+        primitive continuously shifts the noise field by small dx/dy
+        amounts. This means each point of the silhouette samples a
+        slightly different region of the SAME underlying noise field
+        over time, so each leaf's displacement direction smoothly
+        changes without ever teleporting to an unrelated pattern.
+
+        Why this gives the wind effect without boil:
+        - Per-leaf non-uniform bending: still present, because the
+          static turbulence still varies non-uniformly across the
+          silhouette.
+        - Continuous evolution: each leaf's bend direction shifts
+          smoothly as the noise sampling coordinates slide.
+        - No discrete steps: dx and dy are continuous floats; the
+          noise field they're indexing into is fixed and smooth.
+
+        Two offsets animate at different rates and directions so the
+        evolution doesn't read as a single uniform pan. Both run on
+        relatively short cycles for visible activity but ride a
+        continuous noise field — so it's "lots of small per-leaf
+        wiggle" without the integer-seed snap.
+
+        Tuning knobs:
+        - baseFrequency 0.006 — leaf-cluster cell size
+        - numOctaves 2        — texture richness
+        - scale 90            — displacement amplitude
+        - offset ranges       — how much the noise sampling moves
+        - cycle durations     — speed of evolution
+      -->
+      <filter id="canopy-displace"
+              x="-20%" y="-20%" width="140%" height="140%"
+              filterUnits="userSpaceOnUse"
+              primitiveUnits="userSpaceOnUse">
+        <!-- Static noise field — never changes. -->
+        <feTurbulence type="fractalNoise"
+                      baseFrequency="0.006"
+                      numOctaves="2"
+                      seed="1"
+                      result="rawNoise"/>
+
+        <!-- Continuously shift the noise sampling. As dx/dy slide,
+             each silhouette pixel reads displacement values from a
+             slightly different point in the static noise field, so
+             its bend direction evolves smoothly. -->
+        <feOffset in="rawNoise" dx="0" dy="0" result="noise">
+          <animate attributeName="dx"
+                   values="0; 60; -40; 30; 0"
+                   keyTimes="0; 0.25; 0.5; 0.75; 1"
+                   dur="11s"
+                   repeatCount="indefinite"/>
+          <animate attributeName="dy"
+                   values="0; -30; 50; -20; 0"
+                   keyTimes="0; 0.25; 0.5; 0.75; 1"
+                   dur="13s"
+                   repeatCount="indefinite"/>
+        </feOffset>
+
+        <feDisplacementMap in="SourceGraphic" in2="noise"
+                           scale="90"
+                           xChannelSelector="R" yChannelSelector="G"/>
+      </filter>
+
+      <!-- Edge softening for the silhouette before displacement -->
+      <filter id="mask-blur" x="-40%" y="-40%" width="180%" height="180%">
+        <feGaussianBlur stdDeviation="14"/>
+      </filter>
+
+      <!--
+        THE SHADOW MASK
+        Mask region extends well past the viewBox so blurred/displaced
+        silhouette edges have room without exposing the mask edge.
+
+        White rect = light passes through.
+        Black silhouette group = shadow (cream is blocked).
+
+        The silhouette runs through:
+          1. mask-blur (softens the edges)
+          2. canopy-displace (animated turbulence — bends each point
+             non-uniformly, every frame)
+
+        No translation animation — the canopy stays in place; only
+        its shape morphs.
+      -->
+      <mask id="shadow-mask" maskUnits="userSpaceOnUse" x="-600" y="-400" width="3120" height="1880">
+        <rect x="-600" y="-400" width="3120" height="1880" fill="white"/>
+        <g fill="black" filter="url(#canopy-displace)">
+          <g filter="url(#mask-blur)">
+            <use href="#tree-silhouette"/>
+            <use href="#tree-canopy-detail"/>
+          </g>
+        </g>
+      </mask>
+    </defs>
+
+    <!--
+      LAYER 1: BASE green. The "color under the canopy".
+      This is what shows where the mask is BLACK (silhouette).
+    -->
+    <rect x="0" y="0" width="1920" height="1080" fill="#D8DDC6"/>
+
+    <!--
+      LAYER 2: CREAM light, masked. This is what shows where the mask
+      is WHITE (gaps between leaves). Together they produce the
+      canopy-shadow effect with light bleeding through.
+    -->
+    <g mask="url(#shadow-mask)">
+      <rect class="cream-rect" x="0" y="0" width="1920" height="1080"/>
+
+      <!-- LAYER 3: spot highlights, also masked so they only appear
+           in the gaps. Animated by CSS for breathing/drifting; they
+           ride on top of the same mask. -->
+      <g class="spots-mid" filter="url(#blur-mid)">
+        <ellipse cx="700"  cy="400" rx="95"  ry="75"  fill="#F0F1E7"/>
+        <ellipse cx="1300" cy="600" rx="110" ry="85"  fill="#F0F1E7"/>
+        <ellipse cx="200"  cy="500" rx="85"  ry="65"  fill="#F0F1E7"/>
+        <ellipse cx="1600" cy="400" rx="100" ry="80"  fill="#F0F1E7"/>
+        <ellipse cx="600"  cy="750" rx="90"  ry="72"  fill="#F0F1E7"/>
+        <ellipse cx="1200" cy="850" rx="95"  ry="72"  fill="#F0F1E7"/>
+        <ellipse cx="1000" cy="250" rx="85"  ry="65"  fill="#F0F1E7"/>
+      </g>
+
+      <g class="spots-front" filter="url(#blur-front)">
+        <ellipse cx="600"  cy="350" rx="42" ry="34" fill="#EFEED6"/>
+        <ellipse cx="850"  cy="550" rx="48" ry="38" fill="#EFEED6"/>
+        <ellipse cx="1150" cy="350" rx="42" ry="34" fill="#EFEED6"/>
+        <ellipse cx="1400" cy="500" rx="46" ry="36" fill="#EFEED6"/>
+        <ellipse cx="400"  cy="600" rx="38" ry="32" fill="#EFEED6"/>
+        <ellipse cx="1700" cy="550" rx="44" ry="34" fill="#EFEED6"/>
+        <ellipse cx="950"  cy="700" rx="46" ry="36" fill="#EFEED6"/>
+        <ellipse cx="500"  cy="900" rx="42" ry="34" fill="#EFEED6"/>
+        <ellipse cx="1500" cy="850" rx="44" ry="34" fill="#EFEED6"/>
+        <ellipse cx="1100" cy="150" rx="36" ry="30" fill="#EFEED6"/>
+      </g>
+    </g>
+  </svg>
+
+  <!-- Hidden defs SVG: tree silhouette + tree-canopy-detail symbols
+       referenced by the canopy mask above. -->
+  <svg style="position:absolute; width:0; height:0; overflow:hidden;" aria-hidden="true">
+    <defs>
+      <symbol id="tree-silhouette" viewBox="0 0 1920 1080">
+        <path d="M201.14,0l-2.61,13.59-6.08,32.51c-2.7,14.45-4.38,31.77,8.47,43.72l29.39,27.32c16.48,15.32,30.22,35.06,52.29,45.41,48.23,22.62,88.95,12.62,107.2,29.85l21.08,19.91c11.47,10.83,17.34,31.21,32.37,39.38,18.21,9.91,36.16,17.5,55.89,24.51,18.09,6.43,40.47,4.08,60.43,5.24,16.43.95,30.69-2.98,41.85-13.36,7.76-7.22,11.18-27.84,2.48-36.62l-15.74-15.87c-6.24-6.29-24.72-16.82-23.25-25.32,1.95-11.26,18.41-7.27,25.91-4.41l44.79,17.07,42.34-6.64c36.76-18.04,74.92-23.61,115.14-10.01,7.76,2.62,22.48,1.89,31.27.18,26.01.72,44.42-15.18,43.49-37.45,1.18-2.34,3.57-7.9,5.98-8.5s8.21.33,11.03,1.14l34.29,9.97c6.34.99,12.87-14.03,8.89-18.58-5.81-6.65-13.76-9.53-23.71-8.35l-40.79-26.25c-16.35,2.17-30.33-3.84-29.92-18.2l.93-32.91,17.78-16.16c14.58-13.25,28.79-28.75,54.11-23.28,19.11,4.13,43.47,25.86,36.68,29.63l-10.58,5.87c9.68,24.5,37.77,40.15,69.01,39.9l28.99,13.35,15.9,8.85c19.76-11.83,37.87-26.5,52.5-43.51,8.28,9.25,20.04,23.19,32.99,27.97l18.65,6.89,28.66,16.63,22.98,13.69,11.99,10.9c3.07,2.79,11.46-3.61,17.79-9.98,14.63,8.52,32.99,19.48,45.74,30.82l20.63,18.36c-1.16,15.41-33.34,1.53-46.86,12.69-15.68,12.94-.38,32.35-19.56,42.94-20.94-19.48-38.34-38.93-69.68-44.09-8.96-1.48-24.88-1.89-27.91-9.29-8.26-20.2-16.91-30.17-40.84-35.45-9.28-2.05-19.18-1.7-24.72,3.41-19.43,17.89,25.37,46.11,53.68,64.19,8.01,19.73,15.14,36.22,37.6,47.91l23.05,16.07c20.86,14.55,40.49,24.68,68.68,21.35,9.31-12.52,25-14.28,41.29-9.53,6.07-6.44,15.19-13.62,21.43-13.43,8.72.26,19.15,6.64,23.52,12.52l9.81,13.22-30.4,22.56-1.94,25.59,11.79,26.7c2.18,4.93,11.92,11.61,18.72,13.17l26.81,6.13c19.15-4.68,28.09-22.42,29.53-37.92,1.67-17.96,52.58-13.74,39.14-51.71-3.38-9.56,5.04-23.3,9.1-33.69,4.01-10.27-2.14-24.77-2.1-36.01.04-10.43,6.42-23.94,2.42-34.31-3.27-8.48-31-8.39-35.46-.96-3.58,5.97-7.19,13.1-11.38,15.48-15.55,8.84-36.55-10.92-51.35-32.67l-21.45-31.53-29.08-18.42c-17.79-11.27-45.37-14.96-65.52-10.93-9.35-6.34-17.81-10.82-30.8-16.65l-18.85-20.06c-16.9-17.98-39.73-30.76-67.37-32.17l-20.27,6.02-15.6-19.77-1.3-38.66h165.06l33.35,30.48c25.76,4.28,51.99-11.15,57.59-30.48h581.49v413.49l-25.93-3.67c-14.95-2.73-37.92-2.79-42.43,13.99-3.99,14.83,9.73,31.04,18.62,43.79l7.55,26.5,8.68,45.43c6.06,31.73,11.1,34.05,33.51,58.23v108.49c-20.35-15.21-43.69-32.14-54.8-54.44l-12.41-24.9c-4.68-9.39.21-28.9-2.86-40.16-8.76-32.11-44.88-48.7-83.15-46.56-11.3-13.66-15.46-28.62-22.23-43.79l-16.7-37.42c-14.95-33.5-15.9-74.58-60.6-102.71-18.18-6.51-30.42-20.69-42.76-32.8l-19.24-18.88c-21.21-1.89-48.14-10.31-52.75-30.85l-4.86-21.67c-1.12-5-4.96-13.67-3.93-17.94,2.91-12.07,26.66-10.33,36.02-24.04,6.6-9.67,14.79-12.68,28.44-13.47l11.37-19.04,51.35,23.01c26.97,12.08,40.43,30.6,53.82,50.53l28.06,41.75,24.57,13.34c4.99,2.71,10.45,16.36,4.75,17.81l-25.79,6.55c-9.39,29.46,33.55,62.19,55.01,60.41,8.45-.7,26.15-7,27.72-14.3,2.13-9.92-6.89-21.63-14.06-27.26-29.95-23.53,9.63-46.85,6.2-57.32-2.38-7.24-22.84-27.62-41.75-37.23-16.2-8.23-16.44-26.8-2.77-39.73l-14.13-23.16c-4.83-7.92-20.52-16.33-24.83-24.1-17.65-31.8-43.86-54.13-82.2-67.42-5.27-1.83-12.86-2.91-18.24-1.37-16.94,4.84,16.35,25.72,15.9,54.24l-20.81-1.6c-5.61,1.31-24.11,6.1-29.48,1.83l-39.02-31.03c-3.56-2.83-13.15-6.08-17.5-5.86-17.73.93-5.15,24.73-31.51,25.35-10.99.26-12.54,13.01-18.35,18.29l-35.51,32.21-1.59,28.67c-1.14,20.61-3.69,33.9,6.04,52.2,10.6,19.93,2.05,46.76,47.67,66.22l-45.52,21.12c-7.97,23.09,8.82,37.83,25.95,52.42l40.67,34.64c16.21,13.81,48.22,19.44,56.2,43.44,3.57,10.72,7,20.14,13.75,29.34l28.98,39.51c18.51,25.23,28.54,54.15,57.29,72.64,18.89,12.15,37.58,22.62,61.49,20.3l32.85,38.84c20.75,24.53,46.75,42.2,72.45,62.4l39.82,31.3,13.02,10.27v284.2h-234.06c-5.72-11.86-17.37-25.26-33.28-30.44l-44.83-14.6c-23.14-7.53-40.05-21-44.7-41.14-19.99-19.64-40.3-37.94-71.36-40.48-23.83,21.47-54.16,14.72-75.36,34.87-11.65,25.3-2.9,55.35,21.39,72.44l24.76,19.35H387.66l5.23-10.19c1.92-3.01,13.61,1.14,17.9.47l47.14-7.37c24.96-3.9,32.07-14.81,30.76-17.78l-4.46-10.1c-4.68-10.6-6.31-30.11-6.37-41.4-.11-19.12,3.99-36.5-17.29-50.06-14.8-9.43-25.39-24.55-34.66-37.76l-19.27-27.47-19.54-26.79c-5.38-7.37-18.1-10.65-27.08-14.06-19.21-7.29-35.26-3.49-50.12,6.8l-16.46,11.4c-40.04,63.77,4.75,110.41-63.15,92.61l-33.25-8.72c-14.21-3.72-28.78-1.72-41.17-9.04l-20.09-11.87c10.06-12.6,19.58-28.57,16.1-40.96-5.73-20.36-6.41-38.95,9.19-53.23,19.94-18.25,42.85-26.93,72.09-26.28,21.17.47,36.91-10.37,52.21-20.12,10.1-6.44,13.97-11.52,18.82-22.44,3.58-8.06,5.32-12.61,2.78-19.61-6.47-17.78-15.6-33.31-37.54-38.56l-34.33-8.21-27.26-13.22c-6.67-24.27-16.54-45.84-35.08-67.98l36.45-18.3,14.44-17.86-11.86-38.07c-5.83-18.74-21.1-20.38-45-20.34-30.62,9.36-57.63-21.98-58.13-54.32-.51-32.92-51.33-52.76-86.28-71.58l-22.34,10.22v-27.53l26.68,3.94c17.38,3.75,45.57,4.76,56.02-11.22l41.41-63.37c14.73-5.79,30.71-13.38,44.6-17.18l52.94-14.49,37.65-10.34c7.58-2.08,6.18-21.31-1-25.6-10.8-6.44-26.26-15.1-36.68-23.91l-26.2-22.16c-17.81-15.06-58.89-19.75-81.91-9.85-25.46,10.94-45.5,24.53-73.12,30.87-10.82,12.07-22.63,25.05-31.34,37.8l-9.05,11.04V0h201.14ZM1610.44,32.02l34.22,4.55,21.99,9.48c12.3-14.29-17.78-24.84-47.98-30.39l-20.46,13.45c-5.57,3.66-7.28,15.57-8.33,23.29-2.54,18.62,14.12,35.76,33.73,35.51,20.61-29.85-18.58-33.33-13.17-55.89ZM109.04,93.03c6.22-.43,14.76-4.58,15.58-8.58.73-3.6-3.51-10.56-7.36-13.43-15.08-11.23-39.98-5.67-51.99,5.24,8.32,15.38,21.94,18.27,43.78,16.77ZM1214.5,490.36l30.68,20.41-20.13,8.34c-11.35,24.86,7.19,56.64,40.69,59.75,15.42,1.43,34.88-31.59,26.55-38.82l-22.77-19.77,14.17-20.51c5.45-7.89,8.52-13.23,6.4-22.98-4.35-19.95-20.7-38.59-41.75-46.12-36.2-12.94-10.93-28.96-24.84-54.93l-13.98-26.12c-17.31-32.33-50.05-55.86-95.07-45.8l-12.82,24.86c-2.48,4.81-11.62,11.88-18.34,13.36-5.12-3.65-10.56-14.61-15.14-18.66-13.01-11.51-31.85-24.76-48.07-31.66l-54.37-23.13-36.73-12.73c-6.99-2.42-22.79-4.01-30.92-3.83-5.36.12-11.95,11.12-14.49,15.7-17.64,3.9-36.96-4.54-52.16-12.14l-46.72-23.33c-10.92-5.45-31.14-8-46.12-6.55-7.26.7-15.79,13.44-21.63,18.55-21.19,18.51-37.41,51.92-14.68,73.67l41.23,39.48-4.9,25.24c-3.55,18.29,9.32,36.66,31.9,37.61,22.79,18.65,51.44,13.32,75.82.16,12.36-4.41,22.7,13.17,22.52,21.96-.25,12.26-8.98,15.84-18.91,24.49-18.34,15.97-8.54,42.51,5.57,56.97l15.42,15.81c15.57,15.97,31.75,29.9,52.1,42.9l34.69,3.43c9.99-5.11,28.18-19.98,28.7-29.81l2.42-45.28c4.5-4.02,20.68,1.31,21.74,6.2l7.54,34.92c6.99,32.36,59.58,43.13,70.19,72.4,7.8,21.51,30.73,39.41,59.55,31.04,9.52-4.6,19.47-21.67,22.5-30.87l-11.14-20.92c-3.77-7.09-22.73-13.22-29.38-20.7-8.78-9.89-6.01-27.21-6.9-39.85-1.6-22.47-14.74-37.83-10.56-56.51l45.76-6.5c22.53-3.2,38.63-1.6,56.42,10.24ZM1906.17,299.41c25.99-25.24-22.28-60.5-67.88-65.25l-29.84,10.08,16.44,25.48c13.43,20.82,52.95,41.41,81.28,29.69ZM428.36,679.9l36.35-.59c12.47-.2,20.93-2.78,23.91-14.36,1.61-6.28,6.06-17.62,6.3-23.21l1.24-28.23c1.17-26.48,20.15-28.1,20.6-54.66.35-20.24-6.63-33.83-18.34-50.95-5.64-8.25,2.62-28.59,9.91-35.4,21.3-19.9,39.02-48.47,26.12-65.23l-24.39-31.68c-17.36-6.4-34.2-14.17-51.99-18.41-27.66-6.59-58.03,18.86-64.39,42.34-3.9,14.41-4.67,25.29-14.66,37.21l-17.25,20.6c-6.28,7.5-4.67,28.26-.37,36.71l12.51,24.55c12.04,23.63,39.55,34.42,24.52,54.51-45.63,2.66-41.77,27.76-54.45,53.43l16.71,32.51c18.74,11.13,48.12,21.16,67.64,20.84ZM1518.2,454.12c-7.02-21.6-21.01-36.99-45.58-46.32-12.7-4.82-29.52-6.49-37.69,7.24-20.29,34.08,43.87,78.45,72.51,72.02,6.11-1.37,17.05-13.62,10.77-32.95ZM1431.72,531.97c2.2-9.03-1.35-23.91-10.81-24.09-25.24-.48-37.17-7.58-40.39,1.79-7.01,20.35,3.95,41.91,25.2,51.16,5.28,2.3,19.66-2.88,20.83-7.69l5.17-21.18ZM1609.09,625.81c5.63-23.27-9.83-36.32-23.92-50.26-16.9-16.71-39.22-25.77-58.91-18.4-8.81,3.3-20.47,15.96-19.67,25.52,3.07,36.66,37.16,61.93,78.68,65.2l23.82-22.07ZM1160.41,817.64c21.25-14,24.41-36.96,18.77-56.13l-5.77-19.59c-8.07-27.4-24.98-57.46-54.24-57.85-17.93-.23-35.62,5.87-36.74,22.64-19.63,11.56-20.88,30.5-22.56,49.16-2.76,30.62,17.47,57.63,56.46,57.91,10.7,7.35,32.09,11.76,44.09,3.85ZM1386.28,855.19c12.49-12.08,11.72-20.75,5.15-31.43-5.05-8.2-20.75-17.15-31.02-9.02l-28.39,22.45c15.65,9.46,34.69,15.89,54.27,18ZM1876.86,928.83c8.24-3.27,15.31-12.08,14.01-16.59-1.71-5.93-6.53-11.3-12.94-16.4-12.45-9.9-38.67-16.27-50.78-1.63-6.45,7.8,4.1,25.47,12.84,29.79,8.64,4.27,25.29,9.44,36.87,4.83Z"/>
+        <path d="M10.97,1080H0v-132.69c14.21,3.76,29.79,12.38,38.87,24.22-15.46,20.41-27.23,39.06-27.59,62.25l-.31,46.21Z"/>
+        <path d="M336.75,0l17.17,22.79c7.88,10.24,18.91,18.81,11.43,34.61-10.13-9.15-18.51-16.47-26.88-25.32L310.86,0h25.89Z"/>
+        <path d="M760.69,0c-8.59,25.04-55.53,24.73-57.88,17.39l-4.29-17.39h62.17Z"/>
+      </symbol>
+
+      <!-- Secondary canopy detail silhouette — added alongside the main
+           tree-silhouette to give more defined leaf/branch shapes. Used
+           via <use> in both masks below. -->
+      <symbol id="tree-canopy-detail" viewBox="0 0 1920 1080">
+        <path d="M1917,20.8l3,7.6V5.3l-7.7,3.2c-1.9.6-7.1,1-7.5-.9l-1.2-7.5h-142.4c-.4,2.1.7,5.8,1.5,7.8l-5.1,7.7c0,.6-2.9-1.4-3.3-2.5l-3.3-10,3.8-3.1h-22.8l3.3,5.8c-3.8,1.9-4.4,2.3-6.8,5.2l-5.9-2.6-11.4-.3-3-8.1h-42.9l2.1,14.1-.4,10.2,2.9,3c-11.8,5.1-34.6-5.9-36-10.4-.4-1.3.6-4.1,1.7-4.1,3.5,0,7.9-.7,10.8-1.3,1-.2,3.5.6,4-.2.5-.8.5-3,.2-4l-1.8-7.2h-134.1c-1,2.5,2.7,3.9,3.6,5.5l8.5,14.2-10.2,3.5c-1.7.6-5.6-1.3-7-1.8l3.6-6.3.6-9.9V0h-67.6l-1.6,3.6-3.8-3.6h-91.4v4.9c0,1,1.7,3.1,2.1,3.1-1.6.5-4.3,1.5-4.9,2.5-.6,1,0,3.3,0,5.3-1.5-1.5-2.3-4.3-5.4-4.6-3.1-.3-6.5.9-9.5,2.5-1.7-1.4-3.5-3.7-4.6-5.9,5.3-1.2,7.5-3.8,7.8-7.7h-293.8c.1.9-1.5,2.4-2.5,2.9-.6.2-3.6,0-3.5-.5l.5-2.5h-43.8l.7,3.5c2,2.9,2.9,4.8,4.4,8,.9,1.8,3.5,3.3,3.1,6.1-.4,2.8,5.4,2.1-4.5,5.6-9.9,3.5-13.9,13.8-11.7,23.4l2.2,9.6c-4.3-1.3-8.9,1.6-9.5,6.4l2-1.4,5.2,9.4c1.9,1,4.5,2.4,5.8,3.6l.6-2.5,8.8,2.4-1.2,5,5.9-2.2,3.2-1.2c.8-.4,2.5,1.9,2.5,2.9-11.8,9.9-12,16.8-6,31.6-6.9,3.5-12.4,9.2-12.6,17.3-9.1.6-10.3,7.9-17.1,7.7l5.4-6.8-10.1-.9c.2-1.2.6-2.7,0-5s-12.1-7-15.8-7.3-7.5,3.8-9.7,6l-6.6,6.6c-.9.9-1.7-1.6-4.2,2.6-2.5,4.2,3.4,7.9,4.1,9.8.5,1.3-.6,4.7-1.3,5.8-7.9.9-11.1,7-14.4,13.2l-7.4,14.1c-1-.6-2.9-2-3.4-1.5l-3.5,3.5c-1.9-4.1,2.2-8.7,6.6-13.1,1.8-1.8,3-5.9,3.6-8.8l-3.9,1.2c-.9.3,0,2.3-.3,3.9-5.9-3.8-9.7-.9-13.4,3-1.7,1.8-3.2,5.2-2.6,7.4.6,2.2,3.9,3.3,6.3,3.9-.6,1.2-1.9,3.1-2.8,3.4l-9.3,3,.6-7.7c0-1-2.4-2.2-3.1-1.2s-.7,2.4-.4,4.5c-.2.3-3.1.1-3.9-.7-.8-.8-2.7-1.8.8-4.5,3.5-2.7,6.8-7.5,9.1-10.7,1.1-.6,4.7-.9,4.8-2.3,0-1.4-.1-4.6-.3-5.2l-2.4.6c-.5,0-1.2-1.4-1.7-1.7l-12.8-7.4-7.7,8.4c-4.3,2.1-9.7,3.4-12,8.5,0,8.4,9.4,13,18.4,11.6,1-.2,3.8,2.1,1.4,3.1-2.4,1-4.6,4.3-5.6,6.8-.7.7,1.8,5.2-3.3-2.1-5.1-7.3-18.6-6.4-22.6-1.8-4,4.6-3,10.3.3,14l1.8-.9c.3-.2.3,1.3.3,2.4-6.1-1.1-13.4-1-19.7.5l-5,4.9c1.8,2.3,5.3,4.4,9.1,5.2.1.9-.4,3.4-.8,4.3l-2.1,4.4-3.3-2.9-3.2-2.9-3-1.4c-2.2-1.1,4.9-6.7,1-14l-3.3-6.1-7.3-2.8-14.2,6.6c-.5-.4-1.6-1-1.4-1.3l1.1-1.4,3.5-4.6c2.2,0,4-.2,4.6-2.4.6-2.2-.7-3.4-2.5-4.8l-6.5-4.9c-3.9-2.9-9.7-8.2-15.1-5.3-2.5,1.3-4.9,2.8-7.9,3.7l-4.8,4.2c-1.8,1.1-3.9,1.3-4.7,4-.8,2.7.4,4.7,1.9,6.9,6.3,9.2,17.8,7.4,17.6,9.1-.1.6-.5,2.6-.4,3.3l1.4,8.7-7.9-1.9c2.5-3.2,3.4-4.9,2.9-7.8l-1.5,3.1c-.3.7-1.2.7-2.4.9l-.9,1.3c-.2.4-1.6,0-1.6-.3l.4-2.3c-5.1-2.7-9.1-1.4-16,.4-6.9,1.8-11.4,6.8-13.9,14.1-3.9-2.2-8.1-2.6-12.2-2.2l-.6,2.4c-1.2,4.6-3.2-6.8-9.4-5.2l1.3-4.4c6,3.6,11.5,2.1,17.8.3,4-1.1,8.4-3.9,7.2-9.6l-8.8-10-11.5.7c-2.4,0-6.5,2.3-8.8,3.4l-8.7,4.2c-2.9,1.4-1,6.1,1.8,7.3-.9.6-2.8,2.7-2.1,3.4l2,2.1.2-2.2c.7-.2,2.8-.5,2-.3h0l-.7,3.6c0,.1-.1.2-.3.2l.2.2c-7.9,3.6-4.5-5.9-11.5-6.9-4.9-.7-10.4.3-13.3,4.2l-5.1,6.8c0,12.1-15.6,10.1-17.3,18-.7,3.1-.9,4.8-3,6.6l1.5,3.8c.4.9-1.8,2.7-2.8,3s-2.8-.6-3.7-1.5l-4.7-4.5c3.1-1.4,5.6-3.3,6.2-5.7.6-2.4-.8-6.7-3.5-7.3-2.7-.6-6.2,1.1-8.9,1.8l-8.9,2.2c-5.1,1.3-9.7,3.8-15.2,6.1l6,13.2-13.8,7.9c4.2,3.4,6,4.8,7.3,9.4,1.3,4.6,4.3,3.7,7.6,3.4l17.6-1.7-6.9,8.4c3.5-2.1,5.8-3.5,9.3-4.9l-3.1,3.9c-.7.9-.2,3,0,5.8l-2.3-2.4-.6,3.5c0,.9-2.5,1.3-3.2,1.9l-9.7,8.3-.3,4.1c0,1.1,3,1.9,4.7,2.1l.6,5.8-2.6-1.8,2.2,7.1c-1,0-2.4-.2-2.8,0l-2.8,1.3c-1.2.6-3.7-2.5-3.9-3.9-.2-1.4,1-3.4,2.1-4.9l1-1.4c.2-.2-1-.4-1.2-.2l-.8,1.2-1,1.5c-.2.2-1.1-.2-1.1-.5l-.8-2.5c.6-1,.2-.4-1.2,1.9l.3-8.2-6.9-.2-2.7-1.1c-.5-.2-.5,2.6-.3,2.1l4.7.7-5.2,3.5-4.3,4.4c.6,1.9,1.1,3.3.5,5.9l-5.4-4.2c5.1-2.1,6.3-9.3,5.4-14.2-8.7-2.5-17-3.2-24.9-.2-5.5-3.4-9.5-6.2-14.1-11.1-2,2.5-3.4,6.1-3.4,9.6l-4.4,1.4.7,2.6c-5.4.9-9.1,1.7-13.1,4.6l7.4,1.1-.2,5.6c-4.8-8.2-20.2-.5-21.8,5l-2.7,9c2.4-2.1,5.3-2.3,8.6-1.2l3.2,1.1c.7.2,5.6-3,.2,2.6-5.4,5.6-7.2,15.6-4.5,23.4,6.8-2.3,9,4.8,15.9,7l1.4,8c-3.1-.9-5.9-1.8-8.4,0l4.8,1.1-5.9,1.7,2.8,1.2c.5.2,0,2.1-.5,2.1s-2.2-.3-2.5-.7l-4.9-5.4-2-1.7c-.4-.4,1.6-1.5,2.7-2.2-1.7-3.3-3.3-7-9.3-9.2s-12.2,1.1-16.2,5.4c-1.4,1.5-3.1,1.7-5.6,1.2l-6.6,4.7c-1.3-3.1-4.6-6-8.2-6.8l-3.3,4.3-10-2.9c-4.1-1.2-8.7,1.9-11,4.9-1.6,2.1-4,3.3-6.4,4.1-1.3.4-2.1,3.6-1.5,5.3.6,1.7.1,1.2,4,4.8,3.9,3.6,7.1,5.2,12.9,3.6,1.6-.5,3-1.7,4.3-3.9.8-1.3,4.6-.7,5.9.5s2.2,4.6,1.5,6c-.3.4-1.6,1.7-2,1.5l-2.3-1.4c-5.7-3.5-16.2,5.1-16.4,12.7l-8.7,5.2c-2.2,1.3-3.3,7.1-3.6,9.6l-.8,6.2c-.6,4.5.4,9.7,2,13.7l9.9-3.7,7.9-2.8c6.8-2.5,7.9-10.3,10.2-17.1,6.9,5,0,14.1,6.2,21.6-4,4.1-6.2,8.2-8.5,14.3l-1.9-4c-8.4-4-15.3,1.1-20.4,7.5-1.5,1.8-3.2,3.8-3.4,5.8-.2,2-3.1,4-4.9,5.1l-3.3,12.6c1.9,0,3-.5,4.5-1.4,7.3,3.4,15.7,3.8,23.6.5,4.1-4.7,7.1-10.4,8.7-16.8,3.4,1.9,6.8,3.1,10.4,3.5l4.9,2.8,1.9,14.7c.4,2.7-1.7,8.4-.4,11l6,12.1c3.3-6,5.1-8.7,9.7-12.1,4.6-3.4,4.3-9.1,3-13.6l3.4-11.3,5.8.2,2.5.3c1.9.2-2.6-9.2,3.6-15,4.8,3.1,1.1,9.8,2.8,11l3.2,2.1c.3.2,1,1.6,1.2,2s1,0,1.2,0c.4-1.7.9-3.6,1.9-4s3.3,0,4.5,0l6.8.8c1.3,8,8.4,4,15,11.9.9-.2,2.8-2.7,3.2-4.1l5.5-19.4,2.9.7c2.1.5,7.2-10.5,8.6-18.3l2-4.4.7-.8,5.4-5.8c-5-8.8-9-17.5-11.9-27,2.2-.7,3.9.3,5,1.5l4.8,5.5,5.3-11.5,3.7-2.8,3-10.2c.1-.5,1.4-1.7,2-2.1.6-.4,2.1,1.2,2.4,1.9l3,6.1c.7,1.4-.4,4.7.7,6.1,1.1,1.4,3.8,2.5,5.6,3.1,4.8,8.5,15.7,13.4,25.8,14l4.8-14.3,1.4-11.4c.1-.6-1.6-2.5-1.2-2.9l1.7-2,.4-1.7c0-.5,1.8-.4,1.8,0l.2,2.8c1.6-2.3,2.1-4.9,2.9-8.7.8-3.8.1-6.1-3.1-8.9l4.6-.6c-.4-4.8-1.6-8.1-4-12.5l6.7-4c3-4.2,0-7.8-1.4-12.7l6.8,6.6c-1.1,3.6.3,6.8,2.8,7.8l16.9-10.3,5.1-11c.3-.7.2-1.8,2.9-2.2,2.7-.4,3.7,4.3,6.3,3.1.8-2.9.8-7.4,4.2-8.6l-4.2,13.2c-4.8,2.1-6.2,3.5-7.2,9.3s2.5,7.6,5.1,11.7c1.8,2.9,3.3,6,5.7,8.3l14,13c1.6-5.3,3.2-7.8,6.9-11.1l4.1-8.3c.5-1,1.3-2.1,2.2-2.7.9-.6,4.4.6,4.6,1.7l2.2,15.5c2.6-2.8,5.6-3.7,9.2-4.3l12.7-2.2c-3.4,5.8-4.6,13.6-4.5,20.5l-7.3,4.9-4.7,3.5c-1.4,1.2-.8,5.2.4,7.4-6.4,2.5-8.3,8.7-9.5,14.8-5.5,5.9-12.3,11.3-17.6,18.1l-9.5,1.4,3.6-5.1c1.1.5,2.6,1.2,2.6.6l.3-3,.2-2c0-.3,1.1-.6,1.4-.3l2.3,1.8c-.6-1-1.9-2.3-1.4-3.1l3-4.3c-8-6.7-18.2-4-26.6,3.4-3.2,2.9-7.8,6.6-6.8,11.6l1.5,7.3c-2.3,3.1-3.6,7.2-2.9,10.3l7.8-2.2-6.8,6.1-2.4,3.7c-1.8,2.7-3.2,5.1-4.3,7.8l3.4-2.1c.6-.5,6.1-2.3,2.2,1.8-3.9,4.1-14.1,0-16.8,12.2l-3.4-2.3c-.7-.5-1.8.9-3.1,2.8t0,0s0,0,0,0c-.1-.2-1-1.3-2-2.6-1.2-1.5,11.9-4.9,8.1-10.3-2.6-3.7-6.5-1.4-9.3-.7l-9.1-.9c-2.2-.2-7.7-.4-8.6,2l-5.3,14.6,14.2-1.5c.6,1.4,1.7,3.1,3,2.7,1.3-.4,3.7-1.1,4.2-.3l2.4,3.8c-6.6-1.1-10.7,1.8-13.5,4.5-2.8,2.7-3.7,5.9-1.9,9.9l-6.9,6.7-10,2.4-5.5,5.2v-2.8c0-.4-.6-.8-1-.9-.4-.1-2,0-1.8.4l1.7,2.9-3.3,6.9c-3.6-3.2-1.7-.4-6.8,1-5.1,1.4-9.4,2.5-13,6.7l-5.3,6.2-6,4.2c5.7,2.3,5.9,5.9,10.9,8.2l8.5-.5-3.7,16.3c-.6-1.9-1.2-4.6-1.6-7.6-.2-.7-4-1.4-4.7-1.2l.5,6.4-2.5-5c1-2.4,1.7-5,2.1-7l-12.4,5c-1,2.3-1.5,5.2-1.9,8.6,3.1-.7,4.5-1.3,7.1-2.6l2.3-1.2c.4-.2,1,.3,1.5.8.9,0,2,.8,2.5,2,.6,1.5-.5,3.9-1.5,4.2h.2c0,.1-.8,2.1-.8,2.1l-9.4,1.2-9,2.4c-2.6.7-1.4,3.8-3.4,8.2-2,4.4-3.9,7.8-.4,13.4l-4.8.4c-2.6.3-5.3.3-7.8-.1l-1.5,2.8c1,.5,2.4,1.4,2.8,1.8,1.7,2.2.3,6.8-2.5,8.4v-1.1c-4.3-2.5-6.5-5.6-8.2-10.4-1.3-3.6-6.4-4.3-9.7-5l2.6-2.5c.5-.5-1-1.4-2-1.6l-2.5,5.6-5.4-4,7.5-4.4c.7-.5,1.8,1.1,2-2.6.2-3.7-9.9-5.6-14-2.8-1.9,1.3-4.5,3.5-5.7,5.1l-5.3,6.6c-.4.6-1.8,2.4-1.2,2.7l2.6,1.4.7.4,3-1.1c.8-.3,1.9.9,3.1,1.9l-2.5,3.5-2.9-3.5c-1.5-.5-2.8-1.2-6.3.3-4.5,1.9-6.9,7.4-6.7,11.7l2.3.3c2.1.3-8.6,3.3-6.3,13.4l-11.1-3.3-1.4-2.6c-.5-.9-4.8,2.3-5,4v1.6c0,.3-.8,1.1-1,.8l-1-2-1.1,4c-1.4-3.5-2.2-6.4-2.8-10,0-.2-.4-1.5-.9-.9-.5.6-1.5,1.9-1.3,1.7l2.3,7.3-3.3,1.3c2.1,1.9,2.6,4.9,1.2,6.4l-10.3-3.5.6-5.1c.2-1.5-4.8-4.9-13.1.6-6.1,4.1-12.4,8.1-16.2,14.7,2.9.3,1.1-1.4,6.8,1.6,5.7,3,9.2.5,15.8-1.9l-7.2,8.1.5,4.5c.2,2.1,1.4,4.1,3.1,6.2-4.9,0-8.1,2.6-7.9,8.3l-8.1-3.5c-3.1-3-6.2-5.9-11.1-5.1-4.9.8-4.1,6.5-6.3,9.7-.2,1.9.4,3.9-1.2,5.1-.4.3-.9.6-1.5.7l3.8,2.4c-1.7,1.1-2.7,1.4-2.9.8l-1.2-3.1c-1.3.3-2.7.1-4.2-.4,0-.5-.8,1.5-.4,1.7l1.9,1.1c.4.2,1.4,1.6,1,1.8l-2.7,1.1c-.5.3-.8-1.3-1.7-2.5-.9-1.2-3.7-1-6.7-1.2l6-2.6c-3.9-1.8-9.8-.9-11.6,2.2s-7.3,4.3-10,4.8c-.5.1-.9,2.3-.5,2.2l3.2-1.2c1.3-.6,1.9-.6.6.5-2.7,2.4-2.1-1.1-4.5,7-2.4,8.1-4,16.6-.9,25,5-4.6,11.3-4.1,13.9-8.2.1-3.2,1.2-7.1,4.4-7.2,3.2-.1,4.6-1,8.1-3.2s5.9-3.7,9-7.2l3,2.1c-.5,3.6-3.8,5.5-7.6,6-.3,8.2-4.4,11-7.9,13l.4,3c0,.6-1.8.4-2.8.3l1.9-3c-1.6,1-3.1,1.8-3.8,3.1-.4.7,1.1,2.1,1.8,3s.1,3.8-.8,4.4c-.9.6-2.3-.2-4.5-1.3l2.2,4.9c-1,1.5-1.1,2.6-.7,3.6l3.9-1.7v2.7c0,.7-1.2,2.1-1.7,1.7l-.8-.6c2,2.2,4.9,4,2.8,7.6l-3.3-5c-.4-.6-2.2-1.6-2.9-1.3s-1.7,1.3-2.1,2.1c-.4.8,0,3.3,2,3.1s6.3.8,6.8,3.3c-1.3,1.1-4.1-.2-5.3-1.9l-2.6,15.3h2.4c.8,0,2-1.6,2.7-2.4l1.1,4.1-8.4-.3v-6.8l-2.4.6c-.5,3-1.5,5.5-5,6.5l-3.5,4.5-7.9,2.5-2.1-2.6-.5,4.4c-.1.7-1.3,2.1-2,1.9-.5-.1-1.9-.6-2.4-.8h0s0,0,0,0c0,0,0,0,0,0l2-5.3c-2.6.2-.7,1.7-5.7,5.7s-9.7,7.2-13.3,12.5l1.7,5.4-3.8,17c10.8-4.7,29.6-2.8,29.6.4v4.3l4.4,10.1,2.9,5.7c4-3.1,5.5-4.1,9.6-6.3l1.1-5.6c6.3-.7,12.4-3.8,15.6-8.6l1.3-6.2c-1.4-5.1-1.1-9.2.4-14.3.9-2.9.6-4.3,4.5-5.8l5,10c4.3,2.7,9.4,3.3,14.7,4.1l8.5,4.8,1.1,4.2c.2,1,3.9,1.2,4.3-.3.4-1.5.5-4.8.4-6-2.4-1.9-4-5-3.9-6.6l6.5,2.1,1.5,7.4,1.6-3.5c.4-.8,8.6-1,11.2,4.6,1.5-4.4,1.9-8.8.2-13.3l3.6.8,5.2,1.2-2-6.8,5.2-7c6.8-4.2,4.6-7.8,4-15.8-.5-6.4-3.1-13.1-5.9-18.4-2.2-.4-3.8-1.4-5.1-2.9l-4.4-.7c-1-2.4-1.5-3.3-3.5-5.3,4.9-7.2,11.8-7,14.6-13.8l5,.5,10.8,9.8c.9-.2,2.7-1.9,2.4-2.7l-1.5-4.2c0-1.5.4-2.3,1.4-.2,2.9.6,6.9-3.1,6-6l-3.6-11.3-3.1-13.6c3.4.8,5.1,1.2,6.2.5l4.6-2.7.7-7.9c-2.2-4-5.1-8.4-5.1-14.1,4.6,3.6,7.7,8.1,13.7,7.4,2.6-.3,4.3,0,8.5.2l-11.9-15.5c5-3.6,10.4-6.2,16.5-8.2-1.4,3.2-2.9,6.9-2.5,8.8,3.6,3.6,4.8,8,3.2,12.5l-2.7,7.5c-1.6,4.3-2.4,9.3-2.3,13.5l8.3-1.5c11-1.9,8.6-4.5,15.3-10.2,1.4,10.7,5.8,16.3,13.3,21.3l10.4,6.9c2.1,1.4,4.7,3.5,7.3,3.2,6.2-9.4-3.9-21.6-1.3-26.5,2.6-4.9,4-7.7.6-13.6l5.7,1.1c.2-3.8,0-8.8-1.4-12.7l-2.3-7.1c-2.6-.8-6.4-2.5-8.3-4.1l1.5-2.6c.7-1.2-3.4-4.6.9-9.2l-4-1.2-2.6-8.6,6.4-6.5,3.9,1.4c-1.8,4-1,9.9,2.4,12.8,3.1-.8,6.1.2,8.3,2.9,4.2.7,8.4-4.1,8.7-8.6l3.6-4.9c.4-.5,2.2-2,2.8-1.6l3.1,2.1c3.4,2.3,6.9,3.2,10.4,6l3.1-7.2,6.6-14.9-2.5,2.8-.8-3.3-.6,4.9-3.6-2.6c-1-.8-.1-4,1.3-5.5l1.3,5.5,3-10.1,3,3.4-.4-9.6c6.5-2.4,7.8-8.5,11-13.5,1.4-2.1,2.4-4.4,3-6.9.6-2.5,5.5-5.5,8-5.5l11.7.3v-3.4c5.9,0,10.3-1.1,14.8-5.3l.6,6.3c.6,6,7.9,10,13.3,11.7l9.8,3.2c2.5.8,5.6,2.6,8.1.4l.4-10.4,1.3-3.4c.8-2-5.3-4.6-4.7-8.3l1.5-9.7,5.6.6c-4.8,1.9-5.4,6.5-3.2,10.1,0,.7-.5,2.1,0,2.4l2.5,1.5,6.9,6.3c-1.9,3.8-2.9,9,0,12.9-1.8,5.9-1.4,12.5,2.2,17l10.5-6.2c.3,4.6-3.2,3.8-4.6,4.9l-7.2,5.3-.9,10.1-.9,12.3c0,.7,2.5,2.8,1.9,3.1l-3.3,1.7-.9-6.9c0-1,1.3-.7-1.3-3.3-2.6-2.6-9,.9-12.7,6.3l-1.4-2.4c-.3-.5-1.7.6-2.3.8-5.5.8-9.7,3.4-14,6.9l-7.5,3.2c-7,3-9.5,8.1-10.6,15.4l-.8,5.4c4.1-2.8,5.7-4.3,11.8-2.4,6.1,1.9,12.3-.3,15.5-6.4l2.1,2.3-3.9,15.5-5,17.9c-.3,1.2,2,4.8-1.9,4.1s-7.8-3.2-7.9-6.8c-2.5-1.1-7.6.8-7.8,4.8h3.3l-.4,2.1c-.1.5,1.1,1.1,2.7,1.9l-5.2,8.1-1.5-9.5-1.3,6.6c-3.2,0-6.4-1.5-7.2-4.7-2.1-.4-4.3.4-5.7-2.8-1.4-3.2,0-4.2,1.3-6.9l3.6-7.6c-2-1.2-.3-3.7-8-2.7-7.7,1-14.5,6.9-12.5,11.8.4,1.1,2.2,2.2,4,3.3v1.1c0,0,4-1.1,4-1.1l2.6,5.4c0,.2-1.1,1.2-.9,1.5l1.1,1.9-3.4,2.3c-.6.4-1.9-1.3-2.6-2.2v.7c0,0-10-5.2-10-5.2-8.1-4.2-16-2.4-20.9,5.1-4.1,6.3-7.8,14-4.2,20.3,3.7-6.6,10.4.2,18.3-8.4l5.7,1.8-4.3,5.6c-1.4,1.8-.2,5,.6,7.4l2.7,8.1c.1.5-.9,1.8-.6,2.3l1,1.8c-1.7.7-3.5,1.7-4.1,3.1-.6,1.4.8,3.5,2.5,5.2-2.1.6-6.4,1.7-8.3,2.9-2.5,3-5,5.6-7.8,7.9l-1.7,1.4c-.4.3.8,1.2,1.3,1.7l-4.9,3.9c1.4.5,1.9,1.4,1.9,2.3s-2.2,2.7-3.4,2.3l-.3-3.2c-4.1,2.7-.1-6-4.1-11.8-1.5-.4-5,0-6.7.2-.7.1-2.5-1.5-3.1-1.2l-2.7,1.4c-4.3,2.1-5.9,4.4-5.3,9.1.2,1.7-.7,4.4.7,6.1s3.8,2.9,6.1,3.9l3.8,4.9c1.7-1.3,2-2.2,5.3-1.3s3.6-4.3,8.8-6.6c4,6.4-9.6,6.7-9.6,12.4s1.3,3.6.7,4.3l-2.4,3.1.5,6.4c9.5-4,8.1,8.8,18.9,8.8l9.3-5.2c-1.4,4.7-2,8.4.4,12.3.6,1.1,3.7,1,4.9,1.3l8.7,2c-5,6.3-12.2,0-14.7,5.1l-5.9,3.3c-7.3-3-16.8.5-19.6,8.4-1.7,4.9.7,10.1,2.3,14.3-.3,1.4-.5,4.9.7,4.7,2.7-1.6,5.7-2.8,8.3-2.8h8.8l-5.1,18.3,4.1,5.5,3.7,4.4,6.1,1.8,3.9,7.8c3.8-4.8,7-7.3,12-9.9l4.6-4.4c4-3.8,7.8-7.7,9.1-12.9l-1.6-5.2,12.3,10.7,2.5-8.6,4-4.4c-.5-2.3-2.6-7.9,3.9-7.7s10.9-.1,16.8-2c1-.3,3,1.8,3.6-1.7.6-3.5-2.3-9.8-6.9-13.9l-6.3-5.6c-2.3-2-3.5-2.9-7.5-2.4l1.4-8.5c0-.7.6-2.9,1.3-3.1l3.3-.9-.5,3.4c0,.3,1.5,0,1.6-.2l.5-1.4.5-1.9c.2-.6,2.6-.2,2.4.4l-.9,3,1.7-.4c.5,0,2.2,1.3,1.7,1.3l-2.2.2c-4.2.4,4,3.6,7.4,9.5,1.8.8,3.2-2.2,3.4-4.9l.9-12.2c0-1.3-2-5.2-.7-5.1l5.5.6c-4.1-3.4-7.9-6.3-12-6.8-4.1-.5-7.5-.9-8-6.3,4.5,1.5,9.1-2.1,10-5.9-2.4-3.9-8.9-3.4-13.6-.5-.9-8.3-3.8-13.1-9.5-18.7,5.6.3,10,1.7,13.1-1.1l-1.9-7s6.5,5.5,6.6,5.5v2.2c0,.5,1,1.9,2.6,1.3,1.6-.6,3.4-3.6,4.3-5.5l4.5-9.3,1.6-3.8c.4-1,3.1-.2,5,.5,3.1-9.1-1.3-17.7.2-19l4-3.5c2.9-2.5,4.9-3.7,9.8-3.2l-6.1-6.7,5.3-13.9c2.6,1.9,4,2.9,5.3,3.4l11.2,4.4,1.2-18.2c-4.9-2.8-5.1-7.5-5.8-12.5l-.6-4.2c-.4-2.9,5.8-2,7.7-5.7l-8.5-7.5c-4.6,2.1-7.3.3-11.7-2.2l6.1-10.3,10.1.3,4.3-3.7,8.6,5.3,6.9,10.1c4.7-5,7.3-14.3,8.8-13.1l2.2,1.8c.9.7,3.4,1.8,4.1,1l2.7-9.7,1.5-8.6-1.3-4c11.8.5,22.7-3.3,31.6-11.1,6.3-5.5,12.4-9.2,21.6-9.3,3.3-1.5,9.1-3.9,12.1-6.2l11.6-8.8,5.4-4.7c7.9,4.4,16.4,2.4,24-1.4l8.4-4.2,10.1-6.4c2.2,5.2-.5,6.3-2.4,8.7-9.7,12.2-6.8,19.5-13.5,20-3.4.2-10.1-2.7-12-5.5-1.9-2.8-2.1-6.5-6.1-5.8,1.9,8.7,9.3,13.1,18.5,13.6-2.7,5.8-7.2,10.7-13.4,13.5l-17.7,8.1-8.9,9.1c-.3.3-.9,3-1.3,2.7l-2.3-2.2c-3.3-3.1-4.6-6.1-3.9-10.9l-1-.5c-.2,0-1.1.7-1.2.9l.5,7.3,6.3,9c2.5,1.3,2.5-3.2,9.9-9.8,4.6-4.1,5.8-5.9,14.6-9.1,8.8-3.2,15.6-8.5,21.6-16.4,3.5,5.8-.5,16,5.4,27.2l-10.1,13.5c-2.6,3.6-2.9,9.8-6.1,13l-8.7,8.8c-4.8,4.9-9,9.1-16.9,9.1s-8.2-1-11.3-2.2l-2.8-1c-.6-.3-1.4,1-1.4,1.8s1.5,1.6,2.3,1.7l7.4,1.3c4.9.9,8.3,1,14.6,0l-2.6,12.8,3.5-15.3,10.3-10c5.9-5.7,10.3-11.3,12.4-19.6l8-9.4,2.1,9.9c2.8,13.1-6.4,33.5-15.4,43.6-3,3.4-5.4,8.3-10.8,9.4-3.3.7-7.6-.6-11.7-1.7l.3-1.2-4.2-1.5,3.4,3.7-3,6.8-6.6,4.4c-3.3-.8-5.7-1.2-7.9,0,3.3,2.3,8.1,2.7,10.7,1.1,4.4-2.7,6.7-6,7.8-11l11.8,2.2c4.5.8,4.2.6,10.8-6.6,6.6-7.2,11-14.5,15.2-23.3,5.4-11.2,5.7-24.2,1.4-36.2-1.1-3,0-5.7.8-8.7l2.1-8.8,2.8-13.3,1.6-17.6c1.7-3.5,7.1-6.2,9.5-9.4l6-8c5.6-7.6,6.8-24.8,9.7-19.3l5.3,10.2,4.7,8.2c2.1,3.6,2.3,6.3,3.1,11.6s1.2,8-3.6,11.7l-8.2,6.3c-1.4,1.1-.4,4.9,1,5.8,1.4.9,3.7.8,5.3-.4l5.5-3.9-.4-1.3-8.9,3.9c0-3.4,1.6-4.8,3.8-6.3l7.4-5.2c.3,1.4,1,6,2,8l7.2,15.1c1,2.1,2.9,6.5,2.1,8.5l-2.2,6c-1.5,4.1-10.4,3.1-13.6,8.4-1.3,2-1.3,5.3,1,6.9.8-5.5,1.8-9.1,7.5-9.3l-1.5,7.8-10.6,31.6c-.6,1.7-.2,5.2-2.1,6-1.9.8-4.5.8-8,.5l.7,6.1,2.8-4.3c4.3.7,7.1-1.4,8.1-5.7l2.3-10.4,11.2-31.9,6.4-9.3,2.8,21.3c1.1,9-1.8,17.3-4.9,24.9-3.1,7.6-8.7,13-15.4,17.7l-10.2,7.2c-7.8,5.5-6.6,13.9-5.3,12.9l1.2-1c.4-5,3.5-9,7.8-12l13.2-9.5c5-3.7,7.8-7.4,10.3-13.5,2.5-6.1,6.9-12.2,6.3-18.9l-1.5-16.4-.5-7.9-2.7-11c1.3-9.8,1.2-19.5-2-29.1-.9-2.8-3-5.1-3.6-8.6,7.6,6.3,14.3,9.1,21.4,18.5,7.1,9.4,11.1,21.4,12.7,33l-.3,16.8c0,4.8,1.1,11,5.1,13.8l9.3,6.5c2.4,1.7,14.1,5.5,15.9,5.3,1.8-.2,5-2.5,5.8-4.3l2.9-6.9c-2.7,2-2.5,1.7-5,6.3-2.5,4.6-5.3,3.3-10.2,1.5-4.9-1.8-8.5-4-12.7-6.8-4.6-3.1-8.3-6.2-8.3-13.1l.2-21.2c0-1.9-1.5-5.7-2.1-7.7l-3.8-11.9c-1.5-4.7-5.1-9.5-8.3-13.3-6.3-7.5-14.9-12.7-22.4-19.2,6.5-12.2,8.8-20.5,9.4-33.5.3-6.1,6.2-16.8,5.8-26.3-.2-5.3-6.5-13-5.3-15.6,1.2-2.6,5.8.1,9.3-15.1,1.6-6.9-.7-12.3-7.3-15-3.6-1.4-5.9-2-10.7-.4-.7-2.6-.8-5-.6-8.9l6.5-3.7,11.8-6.6,8.9-8.5,10.3.8-1.1-6.6c-.3-2.2,4-5.4,5.9-4.6l3.3,2.2c.8.6,2.5-2.5,2.5-2.9l3.5,5.3,2.9,3.7-9.4,5-7.8,4.1c-4.4,6.2-10,11.9-15.6,17-.2.6,1.9,2.4,2.5,1.7l8-9.1c5.1-5.8,9.3-11.2,16.8-13.8l4.8,3.9c.5.4,1.3,1.9,1.1,2.8-.2.9-1.3.9-3,.9l-1.4,3.4c-5.7,3.9-10,10.5-12.6,14.9-2.6,4.4-4.9,8.7-1.6,14l5.7,4h-7.1l8.7,3.9c3.4,1.5,5.2,5.5,8.4,9.1,3.2,3.6,8.3-8,17-13.8,1.9-1.3,4-3.8,4.2-6l.2-1.8c0-.3-.3,0-.5,0l-1.9-.2c.3-1.7,2.9-2.7,5.8-2.9,1-1,1.3-4.3,1.3-7.4,1-.7,5-.4,6.7.5,1.1,3.8,3.6,5.7,6.9,7.1-3,1.6-5.3,3.1-6.3,5.2-6.8,3.3-9,9.9-6.6,16.8l4,11.4,6.1-1.5c5.7,11.6,4.2,19.9,9.8,20.7,5.6.8,16.4-7.6,17.1-17l11.9,3.1c1.2.3,3.5.6,4.5.5,1,0,1.6-3,1.7-4.1v-3.2c0-.8,2.5-1,3.2-1.4.7-1.3,1-4.1,1.3-6.8l5.8-3.1c3-2.4,6-3.6,10.2-4.6-2.7-4.1-6.1-7.9-7.6-12.1-1.7-4.8-4.3-9.9-10.4-10.1-2.2-.1-6.4,1-9,2s-4,5.3-4.6,8.2l-10.1.5c-1.5.1-3-2.8-2.6-4.6s2.7-3,4.9-3.7,0-6.6-3.6-7.8c-1-.4-1.7,2.5-2.1,3.5l-4.2,11-10.5-4.2c-2.7-1.1-4.3-2.6-5.8-6l10.6.9.8-5c.5-3.3,2.5-7.8,1.9-11.2s-.9-4.6-.4-8.5c-1.2-1.7-5-3.9-7.4-5.3-4.2-2.5-7.2-5.1-13-3.9-6.4-8.8,3.8-17.3,11.6-27.2l13.1,1.7v-2.2c0-.4-.8-.4-1.2-.4l-4.4-.2,1.2-8.7,15.6-19.5,8.7-10.5,2.4,2.5c-5.5,3.5-4.6,10.2-6.3,12.9s-4.1,4-3.6,8.5l.3,2.7c0,.3,3.6,4.6,10.1,2.1,4.2-1.6,7.9-3.3,9.7-7.8l3.4,2c1,.6,3.5-1.4,3.3-1.8l2.2,2.7c.3-2.7,1.4-4.2,3.6-5.6l7.7-4.9,1.8,1.9c.4.4-1.7.9-2.1,1.3l-5.2,5.1,4.2,3c.8.6-1,3.1-1.6,4l-2.4,3.6c-.7.9.4,3,1.1,4.3l5.1,9.9c.6,1.3,1.8,2.9,2.8,2.8s3.2-1.3,3.6-2.2l3.9-9.2,2.2-10.9c.9-4.7-.3-9.5,5.1-9.5s.2,2.6-.2,3.2l-2.8,4.3c2.4,2.1,4.7-4.4,5.8-9.5,1.1-5.1,1.6-10.7-2.1-14.5l-2.9-.6c-.7-.2-.3-2.5,0-3.4l2.8-8c.6-1.7,1.2-7,4-5l8.3,5.8.9,4.8v1.5c6.9-5.3,6.3-20.2,4.7-29.8l7.3,2.8,5.9,3.7,3.7-11.3,5.5,4.2-15,18.9c.2,1,.3,1.6.6,1.5l2.1-1c5.9,1.8,7.9-5.8,9.4-4.1l2.6,3,8.4,7.4c3,6.4-4.6,16.8-5.2,22.5l-1.9,19.7-.8,13.7-1.6,7.9-5.2,2.7-1.6.8c-.4.2,1,.8,1.5.7l5.9-1.6c-2.6,5.6-6.8,4-10.5,3.9l-11-.4c-1.4-2.4-4.9-6.1-7.8-5.1l-9.4,3.1c-2.8,4.9-7.9,10.4-12.5,12.8l-5.5,7.7c2.3.7,3.7-1.6,6.7,2.8,3,4.4,6.3,8.7,13.4,6.4,7.1-2.3,11.8-12.5,15.7-10.8l9.1,3.9c-1.6,3.6-8.4,2.1-12.5,8.6-1.2,1.9,0,2.1.4,5.6l1.1,7.2c1.3,8.3,4.8,15.2,6.5,14.4l3.2-1.6c-.9,3.3-3.1,6.7-6,9.6l-11,11-5,7.4c-.2.4-.6,1.6-.6,2.2s-2.4,6.5,2.5-.4c4.9-6.9,10.9-14.2,18.3-20.1l2.5,19-4.3,5.4-4.9,6.9,6.7,2.6,6.3,2.9c4.5,5.7,3.8,13.5,2.8,20.5,2.9,1.3,8.5,6,5.7,8.8l-6.7,6.8-1.4,2.6c-1.2,2.2.6,7.7,2.7,9.1,4.5.6,8.8-1.5,12-4.8.6-1.1,1-1.1,1.7.8-1.2,5.7-10.3,5.6-15,13.5-3.8,6.4-1.5,13.2,4,17,.5,1,.9,1.7,1.6,2.6.4-5.1,3.2-8.3,7.8-8.6l4.4-4.7,2.7,8.5c.9,2.8,1.1,5.5,3.4,7.7l1.3,1.2c.3.4,1-1,1.3-1.4l2.2-3.2c-.3-2.3,1.9-4.5,4.2-3.8v13c-3,4.6-5.5,9.4-9.2,13-1.9,1.9-6.9,4.8-9.5,5.2l-15.5,2.6c-.9-1.3-1.7-4-2.1-5.7l-1.3-5.6c.3-1.7.3-4-1.7-4.5s-4.1.8-5.1,2.3c-.9-.5-3.6-1.6-5-1.2-1.4.4-2.1,2.8-.6,4.7,1.5,1.9,1.7,4,1.9,6.9l-1.3,1.6-2.2-4.3c-.5-1-3.5-.6-4.3.2s-1.1,2.6-.8,5l-5.2,1c-1.8-2.9-5.7-4.2-8.9-3.1l-3.3,15.1c-1.1,4.9-1.2,10.9-.3,15.4,3.9.2,5.7,1.3,7.3,4.7,1.4,1.3,6.2.4,8.6-.4l4.6,9.8-9.3-2.6c-1.9,1-4.9,1.6-6.2,1-1.3-.6-1.3-3.3-.7-5.1l-3-1.7c-.7-.4-1.3,1-2.3,3.1.2.2.3.4,0,0,0,0,0,0,0,0-.3-.3-1-1-1.3-1.2-4.9-1.4-6.4-6-13.2-9-5.7-1.2-9.8,3.2-12.6,7.6-4.7.8-6.8,4.2-7.6,8.5-1.5,1.4-3.3-.3-4,6.2-.7,6.5,10.2,8.4,20.6,5.3-5.9,3.9-8,11.7-8.1,19.4-.3,2-3.4,5-5,6.6l1.4,6.2c.8,5.1,1.8,9.5,5,13.5,4.4-6.5,10.1-8.9,17.3-10.3,3.9-.8,6.7-3.6,10.7-7.3l10,24.7c-1.7,3-.8,5.4,2.3,6.3l7.9,10.4c0,.3,2,.6,2,.3l.3-1.4,2.3-9.8c.7-2.6,3.8-4.8,6.6-5.6l-3.8-13.5c11.4-12.8,6.6-17.8,6.4-21.5-.2-3.7,1.2-7,2.7-10.9l7.8,3.7c.3.2.9,2.3.6,2.6l-1.9,1.5c-4.7,2-6.4,6.7-5.5,11.5-2.1,4.8-2,9-1.4,14s1.3,9.8,5.9,12.4l22.3,5.8c.8-.4,1.7-.9,1.7-.9,0,0,.4.9.5,1.1h5.8c2.2-2.7,4.6-6.3,6.2-9.8-2.2-1.5-6-3.1-6.6-4.9l-3.7-11.1c-.8-2.5-.9-5.5-1.1-8.3v-2.5c0-.7,2.2-.6,2.7-.2,1,.3,2.2.4,1.6.3l1.6-3.4c1.6-3.5-2.6-3.7-.9-6.2l5.5-7.9c.2-.3,1.3-.9,1.6-1.1.3-.2,1.4,0,1.2.2-.2.2-.9,1.4-.9,1.7l-1.4,7.3c-.2.9-1.5,2.4-2.7,3.6.1.3.6,1.4.6,1.4,2.7-.4,3.7-.2,6,.3l10.1,2.2c2.2.4,5.2,1,6.5,0s3.1-4.7,2.5-6.3l-6-14.9-12.9-4.5.2-7.4,1.3-1.3,16.2-2.6c-6,8,2.8,9.1,6.9,18.8l4.1-4.8-1.1,7.9-.8,1.4c1.1.6,1.8,1,2.1,1.1h0c0,0,.1,0,.2,0,0,0,0,0-.2,0l-1.5,6c1,.9,3.2.2,4.7-1.3,3.4,3.2,3.6,7.7.2,12.5,5.3,2.7,7.5-2.8,14,1.4,3.3,2.1,6.8,4.9,5.5,9.3l3.3,9.2c3.9,1.8,6.2,3.8,9.7,6.1l5.1,3.4c5.1-4.6,7.4-10.4,9.5-16.8.6-1.9,1.9-2.7.9-5.9-1-3.2.2-5.3,2.4-8l-3.2-2.7c8.6-7.7-2.9-13.6,2-20.9,5.4,3.6,9.5,6,15,8.2l.4,14c.4.7,2.3,2.2,2.4,1.8,4.4-4.1,7.3.2,11.2-1.2,0-.2-.1-.4-.2-.5,0,0,0,.2.2.5h0c0,.2.2.6.3.9l8.4,12.1c.7.9.7,3,3,2.8,2.3-.2.7-5.9,2.2-5.9l4.4.2,14-15.4c-.7-4.2-.9-8.4,0-13.4.3-1.5,4.6-2.1,5.4-1.3l-.8,2.1c-.6,1.5-.6,4.7,0,6.3.6,1.6,3.6,3.9,5.3,4.1l7.4.7-.6,2.2c.1.3.8,1.2,1,1l1-1.2c3.5-4.3,1-9,.9-13.6v-15.9c0-7.9-.6-10.8-7-17.5s-13.3-10.2-23.4-10.7l1-20.7c5.1-4.8,3.8-10.9,14.6-10.6,1.9-2.1,1-6.6-.8-9.1l-4.1-5.8,7-4.4c4.8-3,6.8-3,6.5-3.4l-1.4-2.3c-.2-.3-1.1-1.2-1.2-1.3,0,0,.9-.7,1.3-1.1l3.2-3c2.9-2.8,4.1-5.9,6-10.2,0-.3.4-.4.4-.1l.3,2.5-5.1,9.1c3.5,4.4,6,7.4,9.7,10.7.7.4,1.4.8,1.1,1.1l-1.5,1.5c-3.2,3.3-8.3,8.4-8.3,13.6l.3,17.1c0,.4,0,1.5.2,1.5h1.8l7.1-1.3,10.6.3c.9,3.3,2.3,5.3,5,9,2.7,3.7,6.1,7.7,11,7.7-.2,3.3,1.2,4.1,2.6,5.9l4.7,6-5.3,9.6c-6,2-9.3,7.3-9.3,13.6l2.8-1.9c9,1.8,9,10.5,16.2,11,6.7.5,12.5-1.4,16.6-6.4l1.6-1.9c.3-.4,5,3.1,4.3,1l-1-3.2,3.3-1.7c.5-.3,1.7-1.7,1.5-2.3l-2.2-6.1,8.9,1c2.8.3,2.3-3.7,4.7-2.7l9.4,4.1,5.7,11,1.9,5.8c.8,2.6-2.6,3.2-3.5,7l1.3,1,1.5-.2,1.3.3,1.8.4c.3,0,.2-1.2.3-1.8v-17.4l6.2-3.3,5.4-6.5c2.4,7.9,8.2,16.6,15.6,15.1,7.4-1.5,8.2-4,7.8-14.4-.4-10.4-4.5-13.8-2.6-14,.4,0,2,0,2.4-.3l7.1-3.4c.6-.3,1-.5,1-.2l.8,2.6-3.1,2.9c-1,1,0,4.7.6,6.5l-2.6.9-1.6.5c-.3.1-.2,1.3-.2,1.7l-.9,8.6c-.4,3.6,4.8,6.1,8,5.7,3.2-.4,3.5,6.1,5.9,4.8l4.4-2.4c.6-.3.9-2.1.9-2.9l1.5-12.6c0-.6.5-3,1-2.8l2.8,1.3c1.5-2.2,3.6-7.3,5.8-8.3l11.5-5.3c-.6-9.3-3.6-12.6-10.7-17.8-5.3,1.2-12.8.3-11.7,1.4l-2.7-2.7c0,0-1.1-.7-1.2-.7l-2.5-.9c-.6-.2-.5-2.1,0-2.1l2.9-.4c.6-.1,1.8-1.3,1.6-1.8l-.8-2.3c2.4-1.6,4.7-3.3,6.3-5.1s5.5-3-1.1-6.9c-6.6-3.9-18.5-5.8-18.5-5.8l-2.4,3.6-4.2,6.5c-.3.5-.3,2.4-.8,2.3-.5-.1-2.3-.6-2.8-.6l-9.6,1c-2.5.2.6,5.6-.5,5.2l-2.5-.9c-2.6-.9-6.1-9-6.3-14.7-.2-5.7,1.4-10.9,3.1-17.1.9,6.1,3.6,10.5,9.8,12.4l6.5,5.4c.5.4,1.4,1.1,1.6.7l.9-2.1c1.9-4.2,4-8.1,7.2-11.5,2.1-.2,5.7,1,6.7,2.3l1.6,2.1c.2.3.5-.4.8-1.1l2.3-9.3v-1.8l1-6.1,10.4-1.2c1.8,1.1,2.2,1.3,1.5.8l-3.6-9-4.3-9.5-4.6-8.8c-1.8-3.4-5.7-4.2-10.6-4.2l1.2-6.7,8.1,5.3,6.9,3,2.7-7.7c.8-2.2.6-5.5-.2-8.4l2-3,1,2c.2.3.5,1.8.7,2l8.6,7.6c6.3,5.6,4.2,14.3,7.9,10.5l6.2-6.4c1.7-1.8,2-1.7,6.1-4.2,4.1-2.5,5.1-8.4,7.2-12.3,2.1-3.9,3.6-5.9,4.5-11.4l6,2.5,3.8,6.3c.1.1,1.1,1,1.3,1.1h1.5c0,0,.5-.8.7-1.1l3.6-6.3.6-1.3.6-1.3.6-1.4c.9-2,4.5-4.2,6-3.2,0,.2,1,1.4,1.2,1.6l1.2,1.5s0,0,0,0c0,0,0,0,0,0h0c0,.1-.3.5-.5,1-6.1,1.7-10.2,6.5-11.3,12.4l-10.8,2c-3,.6-6.7,1.8-9.5,3.2l-1.6,9.4,4.2,2.5v5.6l-2.7,2.1c-.6.5.6,1.2-.2,3.5-.8,2.3-.9,5.4-1,8.8v17.4c0,.3,1.7,1.8,1.7,1.8,0,0,.2-.2.8-.8l8.6-4.1,13.2-6.1c2.6-1.2,4.1-4.5,4.8-7.6l1.7-8.1-.5-2.3,1.4-5.2c.2-.7,2.2-1.8,2.9-1.9l2.2-.4c.4,0,.4,1,.2,1.3l-.8,1.6-3.4,4.9c-2.2,3.2-.7,7.4.7,10.9l3.3,8.4,4.1,5.7,16.8-1.6c.6,0,2.8,1.2,2.4,1.5l-1.9,1.6c-3.4,2.8-7,8.4-4.9,13.4l-5.5.2-2.9,1.3c-.4.2,0-1.5.3-1.8l1.5-1.2c-.8-6.5-4.3-11.9-10.8-12.6h-1.4c-4.8,1.7-9.4,2.8-14.7,2.8-.5.2-1.9.7-1.7.7l.4,3c.3,2.2-3.8,5.8-6.3,6.5l-1.9.5-1.5.4c-.4.1,1.2,1.1,1.6,1.1l4.5-1.1,1.4-.8c.4-.2,2.3-.8,2.3-.4l-.5,2.7c-.5,2.2-.5,4.3-.5,7.2l-5.2,3.8c0,.4.5,3.1-.3,3.2l-4.3.7c-1.4,3.7-3.8,7.7-7,9.5l-1.8,1c-.4.2-2.4,2.3-.9-1.5s2.3-3.7,5.3-6.8l8-8.3c.3-.4.9-2.1.5-2.4l-8.1-5.1c3-3.5,2.6-7.9-1.1-11.1-4.2-3.7-6.2-5.6-14.3.7s-13.4,3.5-14.7,8.4l2.2,7c1.7,5.6,6,10.5,12.4,9,12.4-2.9,14.3-12.8,22.8-7.7l-8.3,8.1c-3.2,3.1-4.7-1.1-6.9,2l-6.4,9.1c-3.5,5,.7,8.8,0,12.7l-1.7,9.5c-1.7,9.1,11.3,7.9,9.9,10.4l-2.2,3.8c-6.6.7-10.5,5.6-12.3,11.1-3.8,1.9-5.2,5.1-7.2,8.6-.6,1.2-2.4,3.7-2.3,5l1,9.4.8,5.1c0,.6.9,2,1.4,1.7l2.4-1.8c1.5-1.1,5.2-1.6,8.2-1.6l-9.5,8.8c-1.1,1-2.1,4.2-2.1,5.6s1.2,1.1,1.5,1.3.6-.5.8-.9l1.3-2.6c8.7,4.4,9.7-1.7,13.3,2.7.3.5-1,1-1.8,1.2l-3.2,1c-3.4,1-6.7,1.6-10,.4l-6.6-2.3c-5.3,3.8-9,1-10.1,6.1-.7,3.1-10.9,1.1-12.1,9.4l-.8,5.7-1.2,15.1c0,.4-.4,1.7,0,1.7l2.8-.6,5.4-1.2c.8-.2,2.7,1.5,3.4,1.8l11.3,1.5c.7,2.2,2.4,5.9-1.1,9.7s-7,8.7-5.8,11.8l6,.5-6,2.6,1.9,10.2c0,.1-.6,1.1-.7,1.3l-.9,1.6c0,0,1,.4,1.3.5l8.2.5,8.6-.2,3.2.4c.6,0,1-.9,1.7-1.9l3.6-2.2,6.9-7.7c-2.6-4.7,2.6-12.5-7.3-16.9l6-8.3,4.6,6.1c.8,1-1.6,4-2.6,4.8l-.4,14.4,1.5,1.3c7.8,7.1,9.4,11.1,24.6,13.4l.5-1.8v-3.3c0,0-.4-1.1-.5-1.2l-.9-1.1-3.6-4.4c-.4-.4,1-2.5,1.3-2,.3.5,1.4,2.2,2.1,1.6.7-.6,1.9-2.1,1.8-2.7s-.8-2-1.3-2.5l-3.9-4.6c-.6-.7-1.4-2.3-.8-2.5l3.3-1.1,9.2-4.5c.9-.4,1.7-.9,1.4-1.4l-1.7-2.4-3.6-5c-2.6-6.4-5.7-11.2-13.6-10.9-3.1.1-7.2.5-8.4,4.4-.7,2.5-4.8,3.2-7.3,2.8l.8-2.2c0-.3,1-.9,1.3-.9l2.4.3c1.4,0,1.6-.3,0-.5l-2.6-.9,2.8-6.3.9-3.8.7-1.3,1-1.8c.2-.3,1.3.6,1.6.9l.9,1c0,.1.4.9.4,1v1.4c0,.3-.4,1.4,0,1.4h2.1l6.8.2h.7l1.5-1.2s.7,4.1.7,4.2h1.9l-.5-1.8.4-10.8,2.7.6c1.2.3.5-3.1,4.2-4.1.2-.1,1.7,1.1,1.7,1.2l2,6.1s2,2.2,4.3,1,3.9-6.1,1.4-8.9c-2.5-2.8-3.8-6-1.9-9.8s-7.4-6-2.5-12.7c6.5-8.8,1.5-16.2,1.1-15.8l2.2-2c4.1-3.6,3.4-11.9,1.9-18.8l-2.4-11.2c-.3-1.3-4.6-1.1-5.7-.5l.3,2.2c0,.7-1.7,1.2-2.4,1.2l-3.5-.3c-.8-.1-2.8,3.5.5-2.9s8.4-4.3,11.3-6.9c.5-.4.8.9,1,2.2l6.3,5.7,11.7,9.5c.3.3,2.2.9,2.2.6l.4-1.4,2.7-7.6c.9-2.3,2.8-5.9,3.1-8.1l1.3-9,1.9-2.5,4.1,11.2,3.3,13.4c.2,1.1.4,3.3,0,4.2-.3.9,5.9,1.2-3.6,2.2s-8.3,12.4-12.7,15.2l-6.1,3.9c-1.7,1.1-5.2,8.1-.7,8.3,4.5.2,7-3,11.1-1.7v2.9l-.3,9.3c-3.6,2.9-7.9,6.4-8,11.4-5.6,1.6-10.1,5.3-11.8,9.7l-.2,1.8-.9,5.6s-3.1,0-3.1,1.1.9,1.1,1.1,1.1l9.5,2.8c-5.5,6-5.7,11.9-1.1,17.8l5.7,9.6c.3.5,2.2,2,2.5,2.2,1.5-4.2,3.2-6,6.6-7.7l7.1-3.6c.8,2.1-.6,2.6,3.3,6.9,3.9,4.3-.7,4.3,4.9,8l11.6,7.6,1.4.8c.8.5,2.9-.4,3.3-1.3l3.6-8.5,1.7.6,1.2.9c0,0,.6,1,.6,1.2l.2,1.7c.6,5,1.6,9.4,3.6,8.2,0,0,.8-.5.9-.6v1.6l-2,2.8c-.7,1,1.8,2.1,4,7l1.2,2.7v-1.9c0-.7,1.5-1.4,2.2-1.5l1.9-.3c1.7-.3,5.3-2,6.3-3.3l2.4-3.1c.7-.9,2.3.2,2.8,1.7l16.4,11.9.4,1.4.4,1.5.4,1.5c0,.2.4,1.1.5,1.2l1.2,1.2c.2.2.3.3.3,0l-.2-1.9c0-.6.8-1.8,1.3-2.5l1-3.2-4.3-1.6c-.4.5-.6-2.5.2-3l3.5-2,3.2-4.3c2.4,1.9,4.4,3.9,5.4,5.8-8.1,6.3,2.7,15.6-2.7,15.2l-3-.2-1.4.7h-1.4c-.4,0-1.4-.3-1.6,0l-.8,1.3-.8,1.2-2,4-2.8,6.6c-1.3-.2-4.5-.3-4.5-1.2l.4-3.5c.4-3.7-2.3-6.7-5.7-6.8-.6,0-2.2.3-2.3.8l-.6,3.1s4.4-.9,4.4-.9v2.8c-1.9,1.1-4.1,2.1-5.3,3.6-1.2,1.5-.7,4.4-.8,7.1s-1.3,7-.4,9.4l4.5,12.1,3.6-1.3,2.3-1.2c.5-.2.9.9,1.1,1.7l4.5,11.3,9.1-6.9c.2,0,.9-1.6,1.1-1.6l1.3-.4,1.6-.5c0-3.4.6-5.8,4.2-7.9l-6.8-7.4c-.6,0-3-.4-2.4-.7s2.6-1.1,3.2-.8l13.4,6.6c3.6,3.7,6.8,6.6,12.1,8.8l-2.4,19.6-3.8,9c-.7,1.5-4.8,2-6.2,2.9l-2.5,1.6c-.9.6-4-2.6-5.4-6.2l-.8-2.1-2.2-5.9c-1.1-3.2-5.5-5.2-8.7-3.6-3.2,1.6-6.1,3.7-8.5,6.2-2.6,2.7,2.4,8.5-.3,9.7-2.7,1.2-5.5,3.9-6.8,6.6l-2.5,5.1c1.2,4,6.9,3.5,7.1,4.8l.7,4.1c5.9.4,10.4-11.1,5.9-18.8h2l10.2-5.4c3-1.6,7.6,4.3,6.4,7h-7.6l4.3,2.4-3.4,1.5c-2.2.9-4.9,2.9-7.6,5.7-2.7,2.8-5.3,15.1-4.4,17.8l2.2,6.5,4.8-1.2,1.2,1.7,1.9,2.8.6,1.6c.2,5.7-3.6-1.5-8.2-.9-4.6.6-4.5,9.5-14.1,10l-1.8-4.4c-.5-1.2.2-5.8-4.5,0-4.7,5.8-9.2,3.5-13.6,12.1l-1.8,3.5c-.4.9,1.3,3.2,2.2,3l4.8-.8.3-1.8.9-2.3c.2-.5,1.5,1.2,2,1.8,6.3,7.7-2.6,8,.9,16.5,3.4,0,9.4-1.4,11.8-3.4s2.5-7.5,3.7-10.3l1.5-3.6c.3-.6,2,1.5,2.2,2.1l.7,2.6c-3.5,3.2-7.4,8.1-5.2,12.7,1.2,2.4,3.3,4.3,3.8,7.9s1.8,5.5,3.7,8.1l4.2,5.7,10.3-9.5,1,4c1.1,4.3,1.5,10.2,6.1,11.3l-1.5-2.8c-.3-.6,1.7-1.1,4.6-5.3l3.9-5.6c2.1-3.1,1.9-8,.8-12.2l4.5-7c2.3-3.6,2.8-6,2.5-10.2l-.8-10.4c-.2-2.1-3.4-3.3-5-2.7l-1.7-.8c-2.1-1-4.7-.4-6.9.9l-6.7.4c2-2.6,2.2-2.9,2.6-3.1l1.6-1,4.5-2.5c1.6-.9,4.2-3.1,4.4-4.8l.7-5.4.3-2.3c0-.5,1.4,1,1.9,1.3l20.6,10.6-3.5-21.8c-.8-4.7-5.1-11.1-8.8-10.8-1.5.1-3.5,1.5-4.9,2.2s-3.8,1.1-3.4-1.8l.7-1.9.5-1.3-.2-1.9c-.7-6.9,4.1-13.4,4.9-20.2l1.8-15.8.5-25.8c.2-11-1.3-21-5.1-31.2-1.1-3.1-1.1-6.6.2-9.6l2.5-5.9,1.9-15.3.4-3.7c0-.7,2.2,1,2.8,1.2l4.2,1.1c1.1.3,1,3.7,1,5l2.7,5.4c0,2.2,1,4.6,2.8,4.9l6,.9-.2,2.5c-.2,3.5.2,7.5,1.5,10.6l3.8,9.3,1.7,3.9c.4,1.1,3.2,1.5,4.1.9l1.4-.9,2-.7v7c0,.2-.3,1.6-.4,1.8l-1.3,2.4c-.2.4,1.2.5,1.9.4,9-1.7,13.4,1.6,20.8-.6l3.1,11.7-3.6,6.9c-1.9,3.6,1.4,8.6,3.8,10.9l2,1.9c.5.5-.4,2.4-1,3.5l2.1,8.8c.5,2.1-3.9-1-12,6.6-2.6,2.5,1.3,7.7-5.2,9.3.1-6.3-3.4-9.7-8.4-10.4-4.3-1.3-7.5-.5-10.2,2.7-5.4,6.3-13.9,17-10.3,19l6,3.3,8.4,4.3c.5.2,2.5.5,2.8.2l1.9-1.8,3.3-2.4,2.1-2.1c.5-.5,1.4,0,2.3,1.1,3.4,2.9,3.8,6.3,2.7,10.3-1.1,4,1.7,9.2,1.3,11s-3.5.3-1.9,6.4c1.6,6.1,7,6.3,7.3,9.5s-7.8,6.6-4.2,11.5l4.3,5.9c2.6,3.6,7.4,5.6,11.4,10.2l1.7,1.9c.5.6.1,2.7-.7,2.9l-2,.6c0-.4,0,.3,0,1.5l1,.6c.8.5,1.8,2.2,1.9,3.2v3.9c0,4.1.6,7.1,1.7,11.6,4.8-.2,9-2,12.8-4.6v-4.1l.4-2.9,2.8,2,2.7-.9c.6-.2-.7-2.8,0-6,.2-.9,2.6-2.1,3.7-2.1l2.4,12.8c.4,1.9-1.3,1.2,2.3,4.9,3.6,3.7,6.2,15.6,9.3,15.6l6.7-5.2c1.3,0,9.7-10.7,10.1-11.9l4.8-15.9c-.8-2.6-3.1-6-6.1-8.9,3-2.7,4-6.6,1.8-11.1l-5.1-10.2-8.1-4c2.8-3.1,7.1-2.7,8.7-4.2l1-.9.9-.9.9-.9.9-.9,1.8-1.8.5-1.1.6-1.3,1.1-2.4c.2-.5,1.1.1,1.5.6l1,1.4c.3.5.6,1.1.6,1s.6-.6,1-.9l6.4-5.5,8.3-7.4,7.7-4.9v-64.8c-3.6-.2-5.4-1.6-7.4-6.3l4.8-.8c1.1-.2,2,1.6,2.6,2.5v-5.5l-4.3-4.2c1.2-1.2,2.1-2.3,2.5-1.9l1.9,1.5v-20.9c-1.8-2.7-2.1-6.6,0-9.1v-.9l-2.1-6.2c0-.3.5-2,.8-2h1.3v-111.3c-1.7-.3-1.8-2.2-7.2,0-5.4,2.3-7,7.3-9.6,13.3l-2.6-5.1-6.9-7.1,3.4-5.9c5.2,2.7,10.2,1.2,14.4-.9,2.6,1.4,5.7,1.6,8.5.9v-34.7c-1.5-.2-4.3-.9-4.2-2.4s1.1-4.8,1.4-4.8l2.7,5.3v-4.6c-.8-2.3-.8-5.9,0-8.2v-3.7l-1.7-4c-.5-1.4-1.5-4.5-1.6-6.1l-.7-9.7,4,2.2v-80.1l-4-2.4,4-.3v-71.5c-5.5,1-10.6,2.7-15.8,5.5l-4.9-1,3.2-5.8,3.2-6.9c-.8-2.2-1.8-3.8,0-6.1,1.8-2.3,4.4-1.2,6.5.8l5.4-5.6,2.5,5.7V37.8c-3.1,1.6-4.6.9-7.7-.7s-5.5-3-7.5-5.7l6.2-2,1.7,1.2c.3.2,2.2,5.1,1.7-2.1s-5.7-9.8-.7-16.5l3.3,8.8Z"/>
+  <g>
+    <path d="M425.4,647.3c-1,0-.9-2.8-.4-3.7s2.8-2.6,3.3-1.9l1.4,3.8c.3.9-2.6,1.7-4.3,1.7h0Z"/>
+    <path d="M642.8,278c-.8-.8-1.8-2.4-1.4-2.7l2-1.7-.6,4.5h0Z"/>
+    <polygon points="697 226.8 691.5 226.8 699.6 221.8 697 226.8"/>
+  </g>
+      </symbol>
+
+    </defs>
+  </svg>
+
+  <!-- Grain overlay over the hero only -->
+  <svg class="grain" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+    <filter id="paperGrain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="3.5" numOctaves="2" stitchTiles="stitch"/>
+      <feColorMatrix values="0 0 0 0 0.20
+                             0 0 0 0 0.22
+                             0 0 0 0 0.16
+                             0 0 0 0.6 0"/>
+    </filter>
+    <rect width="100%" height="100%" filter="url(#paperGrain)"/>
+  </svg>
+
+  <!-- ============================================================ -->
+  <!-- ✏️  EDIT: HERO TITLE                                          -->
+  <!-- The studio name and tagline shown on the canopy. Change the   -->
+  <!-- two lines below. Keep them short — long text wraps awkwardly  -->
+  <!-- against the dappled-light background.                         -->
+  <!-- ============================================================ -->
+  <div class="hero-title">
+    <h1>sweetspire studio</h1>
+    <p>creative studio</p>
+  </div>
+  <!-- ============================================================ -->
+  <!-- END: HERO TITLE                                               -->
+  <!-- ============================================================ -->
+</section>
+
+<!-- Empty container extending the page below the hero.
+     Negative margin pulls it up to overlap the bottom of the hero.
+     z-index puts it above the dappled scene at the overlap zone. -->
+<div class="below-hero">
+
+  <!-- ============================================================== -->
+  <!-- ✏️  EDIT: HOME PAGE CONTENT                                     -->
+  <!--                                                                 -->
+  <!--   This is the main body of the home page (below the canopy).    -->
+  <!--                                                                 -->
+  <!--   Headers:                                                      -->
+  <!--     <h2> = top-level section heading (large italic serif)       -->
+  <!--     <h3> = sub-section heading (medium italic serif)            -->
+  <!--                                                                 -->
+  <!--   Paragraphs: wrap text in <p>...</p>                           -->
+  <!--   Bold inline text: <strong>...</strong>                        -->
+  <!--   Italic inline text: <em>...</em>                              -->
+  <!--                                                                 -->
+  <!--   Don't change the `id` attributes on headers — they're used    -->
+  <!--   as anchor targets by the nav.                                 -->
+  <!-- ============================================================== -->
+  <section class="section">
+    <h2 id="about">who we are</h2>
+    <p>Sweetspire Studio is a small graphic design studio working in brand identity, print, and editorial. The studio is led by a single designer who handles every project from first sketch to final delivery — no handoffs, no committee, no diluted intent.</p>
+    <p>We're drawn to work that rewards a second look. Identities that feel like they were always there. Print pieces with a little weight in the hand. Layouts that breathe. Type that knows when to be quiet.</p>
+
+    <h3 id="services">what we do</h3>
+    <ul class="services">
+      <li><strong>Brand identity</strong> — logomarks, wordmarks, color systems, type pairings, and the small rules that hold a brand together.</li>
+      <li><strong>Print &amp; editorial</strong> — books, zines, lookbooks, programs, posters, and the kind of paper-craft work that benefits from a careful eye.</li>
+      <li><strong>Packaging</strong> — labels, wraps, boxes, and tactile systems for products that want to feel like a small gift.</li>
+      <li><strong>Art direction</strong> — collaborations with photographers, illustrators, and writers to give a campaign or publication a shared visual logic.</li>
+    </ul>
+
+    <h3 id="ethos">how we work</h3>
+    <p>Slowly, mostly. We take on a small number of projects at a time so each gets the attention it deserves. Every engagement starts with a conversation — about the work, the people it's for, and the feeling you want it to leave behind. From there, we make.</p>
+    <p>If any of this sounds like the kind of company you'd like to keep, we'd love to hear from you.</p>
+  </section>
+  <!-- ============================================================== -->
+  <!-- END: HOME PAGE CONTENT                                          -->
+  <!-- ============================================================== -->
+</div>
+
+<!-- ================================================================ -->
+<!-- ✏️  EDIT: FOOTER CONTENT                                          -->
+<!--                                                                   -->
+<!--   The footer appears at the bottom of EVERY page. Edits here      -->
+<!--   only affect THIS page (index.html). To update across all pages, -->
+<!--   make the same edit in: about.html, gallery.html, services.html, -->
+<!--   social.html, contact.html.                                      -->
+<!--                                                                   -->
+<!--   Editable elements:                                              -->
+<!--     .footer-mark  — studio name (large italic)                    -->
+<!--     .footer-tag   — short tagline below the name                  -->
+<!--     .footer-bottom — copyright line + closing tagline             -->
+<!--                                                                   -->
+<!--   Don't change the nav <a> tags' href attributes or class="active" -->
+<!--   markers — those control page links and active-page highlighting. -->
+<!-- ================================================================ -->
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <p class="footer-mark">sweetspire studio</p>
+      <p class="footer-tag">creative studio</p>
+    </div>
+    <nav class="footer-nav" aria-label="Footer">
+      <a href="index.html" class="active">Home</a>
+      <a href="about.html">About</a>
+      <a href="gallery.html">Gallery</a>
+      <a href="services.html">Services</a>
+      <a href="social.html">Social</a>
+      <a href="contact.html">Contact</a>
+    </nav>
+  </div>
+  <div class="footer-bottom">
+    <p>&copy; 2026 Sweetspire Studio. All rights reserved.</p>
+    <p>Stories from the common ground.</p>
+  </div>
+</footer>
+<!-- ================================================================ -->
+<!-- END: FOOTER CONTENT                                               -->
+<!-- ================================================================ -->
+
+<script>
+  // Hamburger toggle
+  const nav = document.getElementById('nav');
+  const toggle = document.getElementById('navToggle');
+  toggle.addEventListener('click', () => {
+    nav.classList.toggle('open');
+    // Also toggle the toggle button state for the X animation
+    toggle.classList.toggle('open');
+  });
+
+  // When nav.open, animate the hamburger to X
+  const observer = new MutationObserver(() => {
+    if (nav.classList.contains('open')) {
+      toggle.classList.add('open');
+    } else {
+      toggle.classList.remove('open');
+    }
+  });
+  observer.observe(nav, { attributes: true, attributeFilter: ['class'] });
+</script>
+
+<style>
+  /* X-animation when hamburger is open — needs to be after the script
+     so the .open class on the button gets respected. */
+  .nav-toggle.open span:nth-child(1) {
+    transform: translateY(8px) rotate(45deg);
+  }
+  .nav-toggle.open span:nth-child(2) {
+    opacity: 0;
+  }
+  .nav-toggle.open span:nth-child(3) {
+    transform: translateY(-8px) rotate(-45deg);
+  }
+</style>
+
+</body>
+</html>
