@@ -1,0 +1,902 @@
+/* ============================================================
+   SHARED STYLES — used by every page on the site.
+   ------------------------------------------------------------
+   1. Base palette, typography, hero canopy, navigation.
+   2. Inner-page sections + gallery (gallery.html uses these).
+   3. Hamburger X-animation (active when nav is open).
+   ============================================================ */
+
+/* ─── 1. BASE ─────────────────────────────────────────────── */
+  :root {
+    /* Cream-light palette: tones visible through the canopy gaps. */
+    --sun-top:    #F0F1E7;   /* coolest off-white */
+    --sun-mid:    #EFEED6;   /* warm cream */
+    --sun-bot:    #E9ECDE;   /* faintly green-tinted off-white */
+
+    /* Sage palette: the base shadow color (visible under leaves) and a
+       step-deeper sage for the hero background gradient depth. */
+    --shadow:     #D8DDC6;
+    --shadow-deep:#b8c0a3;
+
+    /* The solid color the page scrolls down to — matches the footer's
+       off-white so the section and footer read as the same surface,
+       with the canopy gradient blending into that surface up top. */
+    --page-color: #ffffff;
+
+    /* Accent: used for the "active" nav link indicating which page the
+       user is on. A warm muted gold/amber chosen to pair with the
+       sage/cream palette without clashing. */
+    --accent: #c9a14a;
+
+    /* How far the .below-hero section overlaps up into the hero. This is
+       the SINGLE source of truth — used both for the negative margin
+       that creates the overlap and for the gradient stops that fade the
+       page in past the seam. Change this in one place and everything
+       stays in sync. */
+    --hero-overlap: 30vh;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 100%;
+    /* No fixed height; allow the page to scroll. */
+    background: var(--page-color);
+    /* Smooth scrolling for anchor jumps and nav interactions */
+    scroll-behavior: smooth;
+    /* Prevent any horizontal scroll. The parallax light layers inside the
+       hero scale and translate slightly past 100%, which would otherwise
+       push the page right by a few pixels. Clip horizontally only — vertical
+       scrolling stays untouched. */
+    overflow-x: hidden;
+  }
+
+  body {
+    font-family: 'Cormorant Garamond', 'Georgia', serif;
+    /* Total scrollable height: hero is 100vh, plus more below.
+       We let content determine the height. */
+    min-height: 100vh;
+  }
+
+  /* ------------------------------------------------------------------
+     HERO SECTION — the dappled canopy scene.
+     This is the full first viewport. Inside it sits the layered
+     SVG canopy, the moving light spots, the grain, and the title.
+     ------------------------------------------------------------------ */
+  .hero {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    /* Clip horizontally only — the parallax light layers scale up to 1.06
+       and translate up to 2.5%, which pushes their edges past 100% width
+       and was causing the page to scroll right. overflow-x: clip contains
+       the parallax inside the hero without affecting vertical layering, so
+       .below-hero can still overlap up into the hero via negative margin. */
+    overflow-x: clip;
+    background: linear-gradient(
+      170deg,
+      var(--shadow) 0%,
+      var(--shadow-deep) 100%
+    );
+  }
+
+  /* ------------------------------------------------------------------
+     CANOPY SCENE — sole rendered SVG carrying the dappled canopy.
+     Sized OVERSIZED (110% width/height with -5% offsets) so that the
+     mask's animateTransform can slide the shadow pattern across user
+     space without ever exposing the SVG's edges. The .hero's
+     overflow-x: clip handles the visible viewport crop.
+     ------------------------------------------------------------------ */
+  .canopy-scene {
+    position: absolute;
+    top: -5%;
+    left: -5%;
+    width: 110%;
+    height: 110%;
+    z-index: 2;
+    pointer-events: none;
+    display: block;
+    will-change: opacity;
+  }
+
+  .cream-rect {
+    fill: url(#cream-gradient);
+  }
+
+  /* ------------------------------------------------------------------
+     MOTION — bumped up noticeably from the previous version.
+     - Larger translate amounts (~2-3% instead of ~0.5-1%)
+     - Larger rotations
+     - Scale pulsing as well
+     - Each layer animates independently
+     ------------------------------------------------------------------ */
+  /* Each spot layer has its own slow drift + scale + rotation, plus
+     an independent opacity breathing cycle on a different timing.
+     IMPORTANT: do NOT set CSS `filter` on these groups — that would
+     override the SVG `filter="url(#blur-...)"` attribute on the
+     <g> elements, making the heavy SVG blur disappear and leaving
+     near-solid shapes. */
+  .spots-mid {
+    transform-origin: 50% 50%;
+    transform-box: fill-box;
+    animation-name: spots-mid, breathe-mid;
+    animation-duration: 29s, 19s;
+    animation-iteration-count: infinite, infinite;
+    animation-timing-function: ease-in-out, ease-in-out;
+  }
+  .spots-front {
+    transform-origin: 50% 50%;
+    transform-box: fill-box;
+    animation-name: spots-front, breathe-front;
+    animation-duration: 23s, 17s;
+    animation-iteration-count: infinite, infinite;
+    animation-timing-function: ease-in-out, ease-in-out;
+  }
+
+  @keyframes spots-mid {
+    0%, 100% { transform: translate(0, 0) scale(1) rotate(0deg); }
+    50%      { transform: translate(-3.4%, 2.2%) scale(0.92) rotate(-2.6deg); }
+  }
+  @keyframes spots-front {
+    0%, 100% { transform: translate(0, 0) scale(1) rotate(0deg); }
+    50%      { transform: translate(4.0%, -2.4%) scale(1.08) rotate(3deg); }
+  }
+
+  @keyframes breathe-mid {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.8; }
+  }
+  @keyframes breathe-front {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.9; }
+  }
+
+  /* (gradient transition is now inside .section as a background gradient
+     rather than an overlay element) */
+
+
+  .grain {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 3;
+    pointer-events: none;
+    opacity: 0.3;
+    mix-blend-mode: multiply;
+    display: block;
+  }
+
+  /* ------------------------------------------------------------------
+     HERO TITLE — now white text
+     ------------------------------------------------------------------ */
+  .hero-title {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    pointer-events: none;
+  }
+  .hero-title h1 {
+    font-size: clamp(3rem, 8vw, 6rem);
+    font-weight: 300;
+    letter-spacing: 0.02em;
+    color: #ffffff;
+    font-style: italic;
+    /* Soft glow to keep the title legible whether sitting on cream or shadow */
+    text-shadow: 0 2px 30px rgba(0, 0, 0, 0.25), 0 0 60px rgba(0, 0, 0, 0.15);
+  }
+  .hero-title p {
+    font-size: 0.85rem;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: #8c8f74; /* desaturated medium-green for "creative studio" */
+    margin-top: 1.5rem;
+    font-family: 'Helvetica Neue', sans-serif;
+    font-weight: 400;
+    /* Slightly heavier shadow than before — the subtitle is now darker
+       than the canopy in some spots, so the shadow earns it legibility
+       both over light dapples and shadow patches. */
+    text-shadow: 0 1px 12px rgba(255, 255, 255, 0.35), 0 1px 3px rgba(0, 0, 0, 0.18);
+    opacity: 0.95;
+  }
+
+  /* ------------------------------------------------------------------
+     HAMBURGER NAVIGATION
+     All white. Sits in top-right of viewport. When clicked, the nav
+     expands as a horizontal bar across the full top of the page.
+     ------------------------------------------------------------------ */
+  .nav {
+    position: fixed;
+    /* Shift the bar's top edge down 8px so its vertical center (at
+       8 + 80/2 = 48px) aligns with the hamburger button's center
+       (top: 28px + height: 40px / 2 = 48px). */
+    top: 8px;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    pointer-events: none;
+  }
+
+  .nav-bar {
+    position: relative;
+    width: 100%;
+    /* Reserve room on the right so links never collide with the fixed
+       hamburger button. Hamburger is 40px wide at right: 32px from
+       viewport edge — so its left edge is at right: 72px. We add ~48px
+       of breathing room past that, matching the 48px left padding for
+       a symmetric inset on both sides of the link container. */
+    padding-right: 120px;
+    padding-left: 3rem;
+    /* Starts as a thin invisible strip; expands into a full bar when open */
+    height: 0;
+    background: transparent;
+    transition:
+      height     0.5s cubic-bezier(0.4, 0, 0.2, 1),
+      background 0.5s ease;
+    pointer-events: auto;
+    overflow: hidden;
+  }
+
+  /* Open state: off-white paper panel.
+     - Background is a vertical gradient that fades from transparent at the
+       top edge into a near-opaque off-white at the bottom. This lets the
+       canopy still show through the top sliver instead of slamming into
+       a hard edge, while the body of the bar reads as a paper surface.
+     - The .nav-paper element (placed inside .nav-bar) provides the grain
+       overlay so the panel keeps the same tactile texture as the hero. */
+  .nav.open .nav-bar {
+    height: 80px;
+    background: linear-gradient(
+      to bottom,
+      rgba(247, 244, 232, 0.0)  0%,
+      rgba(247, 244, 232, 0.55) 30%,
+      rgba(247, 244, 232, 0.92) 70%,
+      rgba(247, 244, 232, 0.96) 100%
+    );
+  }
+
+  /* Paper grain overlay specifically for the nav bar.
+     Sits inside .nav-bar, fills it, with multiply blend mode so it adds
+     subtle noise/texture without flattening the background gradient.
+     Only visible when the bar is open (it's clipped by .nav-bar's height). */
+  .nav-paper {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.35;
+    mix-blend-mode: multiply;
+    display: block;
+    /* The grain itself should fade with the same gradient as the background
+       so the top edge stays soft and texture doesn't appear out of nowhere
+       at the boundary. mask-image does this without affecting the SVG. */
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      black 35%,
+      black 100%
+    );
+            mask-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      black 35%,
+      black 100%
+    );
+  }
+
+  /* Menu links — live in normal flow inside .nav-bar so they respect
+     the bar's right-side padding reservation for the hamburger. Sized
+     responsively with clamp() so they scale down on narrow widths
+     rather than colliding with the hamburger. */
+  .nav-links {
+    position: relative;
+    z-index: 1; /* above .nav-paper grain overlay */
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    /* Anchor links at the left edge of the bar's content area and spread
+       them across the full available width (which is already bounded on
+       the right by .nav-bar's padding-right reservation for the
+       hamburger). First link sits at the left, last link sits just
+       inside the hamburger reserve. */
+    justify-content: space-between;
+    /* gap is no longer the main spacer with space-between — flex
+       distributes remaining space evenly. We keep a min-gap as a floor
+       so links never touch if the bar gets very narrow. */
+    gap: clamp(0.6rem, 1.5vw, 1.5rem);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    transition-delay: 0s;
+    /* Allow the flex container to shrink below its content width if needed,
+     so the bar never overflows or pushes the hamburger. */
+    min-width: 0;
+  }
+
+  .nav.open .nav-links {
+    opacity: 1;
+    transition-delay: 0.25s;
+  }
+
+  .nav-links a {
+    color: #8c8f74; /* matches the "creative studio" subtitle */
+    text-decoration: none;
+    font-family: 'Helvetica Neue', sans-serif;
+    font-weight: 500;
+    /* Font scales with viewport width — small at narrow, original 0.85rem
+       at desktop sizes. Letter-spacing also tightens slightly on narrow
+       widths so links don't smear together. */
+    font-size: clamp(0.62rem, 1.05vw, 0.85rem);
+    letter-spacing: clamp(0.15em, 0.3vw, 0.3em);
+    text-transform: uppercase;
+    white-space: nowrap;
+    transition: opacity 0.2s ease, color 0.2s ease;
+  }
+  .nav-links a:hover {
+    opacity: 0.65;
+  }
+  /* Active state: the link representing the current page. Uses the
+     warm gold accent. Slightly heavier weight reinforces "you are here". */
+  .nav-links a.active {
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .nav-links a.active:hover {
+    opacity: 1; /* no fade-on-hover for active — it's already a clear state */
+  }
+
+  /* Hamburger button — sits above the bar at top-right of viewport */
+  .nav-toggle {
+    position: fixed;
+    top: 28px;
+    right: 32px;
+    width: 40px;
+    height: 40px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    z-index: 101;
+    padding: 0;
+    pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .nav-toggle span {
+    display: block;
+    width: 28px;
+    height: 2px;
+    background: #ffffff;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  /* Animate hamburger into an X when open */
+  .nav.open + .nav-toggle span:nth-child(1),
+  .nav.open ~ .nav-toggle span:nth-child(1) {
+    transform: translateY(8px) rotate(45deg);
+  }
+  .nav.open + .nav-toggle span:nth-child(2),
+  .nav.open ~ .nav-toggle span:nth-child(2) {
+    opacity: 0;
+  }
+  .nav.open + .nav-toggle span:nth-child(3),
+  .nav.open ~ .nav-toggle span:nth-child(3) {
+    transform: translateY(-8px) rotate(-45deg);
+  }
+
+  /* ------------------------------------------------------------------
+     BELOW-HERO CONTAINER — an empty container that extends the page
+     down past the hero. It starts slightly BEFORE the hero ends
+     (negative margin-top) and sits z-indexed ABOVE the dapple scene,
+     so its top edge overlaps the bottom of the canopy.
+
+     Inside it, the .section provides the actual page content area.
+     The section's background is a linear gradient that starts FULLY
+     TRANSPARENT at the top (within the overlap zone, so the canopy
+     shows through) and fades to solid --page-color by the time the
+     overlap ends — creating a smooth blend.
+     ------------------------------------------------------------------ */
+  .below-hero {
+    position: relative;
+    width: 100%;
+    /* Negative margin pulls this container up by --hero-overlap so its
+       top edge lands that far above the hero's bottom — that distance
+       IS our overlap zone. */
+    margin-top: calc(-1 * var(--hero-overlap));
+    z-index: 6; /* above .light-layer (2), grain (3), hero-title (5) */
+    pointer-events: auto;
+  }
+
+  .section {
+    width: 100%;
+    /* Total height = full viewport of readable content + the overlap zone
+       sitting above the seam. */
+    min-height: calc(100vh + var(--hero-overlap));
+    /* Top padding pushes content below the overlap zone so it starts at
+       the seam, not inside the canopy. */
+    padding: var(--hero-overlap) 8vw 6rem;
+    color: #5a5d3e;
+    /* The opacity gradient exists ONLY inside the overlap zone — the
+       top --hero-overlap of the section's height. The section's top
+       edge is fully transparent (so the canopy reads through cleanly),
+       and the section hits FULLY SOLID a little before it reaches the
+       seam (at 85% of the overlap distance). This gives the solid
+       --page-color a few vh of cushion ABOVE the hero's bottom edge,
+       so any faint residual seam-line falls inside the solid region
+       and is hidden. Below the overlap zone, the section is uniformly
+       solid --page-color forever — no further fading.
+
+       Intermediate stops use rgba(255, 255, 255, x) so the gradient
+       blends through translucent white toward the solid white
+       --page-color — gradient shape and stop positions unchanged
+       from when the destination was sage-cream. */
+    background: linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0)    0,
+      rgba(255, 255, 255, 0.15) calc(var(--hero-overlap) * 0.30),
+      rgba(255, 255, 255, 0.45) calc(var(--hero-overlap) * 0.55),
+      rgba(255, 255, 255, 0.8)  calc(var(--hero-overlap) * 0.75),
+      var(--page-color)         calc(var(--hero-overlap) * 0.85),
+      var(--page-color)         100%
+    );
+  }
+
+  .section h2 {
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 300;
+    font-style: italic;
+    margin-bottom: 1.5rem;
+    color: #5a5d3e;
+  }
+
+  .section h3 {
+    font-size: clamp(1.3rem, 2.2vw, 1.6rem);
+    font-weight: 400;
+    font-style: italic;
+    margin-top: 2.5rem;
+    margin-bottom: 1rem;
+    color: #5a5d3e;
+    letter-spacing: 0.01em;
+  }
+
+  .section p {
+    font-size: 1.1rem;
+    line-height: 1.7;
+    max-width: 60ch;
+    margin-bottom: 1.2rem;
+    color: #6b6e4a;
+  }
+
+  /* Services list — kept understated, no bullets, just a hairline rule
+     between items so they read like a quiet menu rather than a UL. */
+  .section .services {
+    list-style: none;
+    max-width: 60ch;
+    margin: 0 0 1.5rem;
+    padding: 0;
+  }
+  .section .services li {
+    font-size: 1.05rem;
+    line-height: 1.65;
+    padding: 0.85rem 0;
+    border-top: 1px solid rgba(90, 93, 62, 0.18);
+    color: #6b6e4a;
+  }
+  .section .services li:last-child {
+    border-bottom: 1px solid rgba(90, 93, 62, 0.18);
+  }
+  .section .services strong {
+    color: #5a5d3e;
+    font-weight: 500;
+  }
+
+  /* ------------------------------------------------------------------
+     FOOTER
+     White panel that sits at the bottom of the page. Dark text in the
+     same olive/sage palette as the body copy. Kept low-key so it
+     doesn't fight the dappled-light feeling of the rest of the page.
+     ------------------------------------------------------------------ */
+  .site-footer {
+    background: #ffffff;
+    color: #5a5d3e;
+    padding: 4rem 8vw 2rem;
+    font-family: 'Cormorant Garamond', 'Georgia', serif;
+  }
+
+  .footer-inner {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2.5rem;
+    justify-content: space-between;
+    /* Center vertically so the nav links sit at the visual midpoint between
+       "sweetspire studio" and "creative studio" rather than pinned to the top. */
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding-bottom: 2.5rem;
+    border-bottom: 1px solid rgba(90, 93, 62, 0.18);
+  }
+
+  .footer-brand .footer-mark {
+    font-size: 1.8rem;
+    font-style: italic;
+    font-weight: 300;
+    color: #5a5d3e;
+    margin: 0;
+    line-height: 1;
+  }
+  .footer-brand .footer-tag {
+    font-family: 'Helvetica Neue', sans-serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: #6b6e4a;
+    margin-top: 0.6rem;
+    font-weight: 300;
+  }
+
+  .footer-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.75rem;
+    align-items: center;
+  }
+  .footer-nav a {
+    font-family: 'Helvetica Neue', sans-serif;
+    font-size: 0.75rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: #8c8f74; /* matches top nav + "creative studio" subtitle */
+    text-decoration: none;
+    font-weight: 500;
+    transition: opacity 0.2s ease;
+  }
+  .footer-nav a:hover {
+    opacity: 0.65;
+  }
+  .footer-nav a.active {
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .footer-nav a.active:hover {
+    opacity: 1;
+  }
+
+  .footer-bottom {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding-top: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+  .footer-bottom p {
+    font-family: 'Helvetica Neue', sans-serif;
+    font-size: 0.75rem;
+    color: #8a8d6e;
+    margin: 0;
+    letter-spacing: 0.05em;
+  }
+
+  /* Below ~800px the footer content stacks vertically. Center everything
+     in this state — brand block, nav links, copyright line, tagline —
+     so the stacked layout reads as a tidy centered column rather than
+     content awkwardly pinned to opposite sides of a narrowed page. */
+  @media (max-width: 1024px) {
+    .footer-inner {
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 2rem;
+    }
+    .footer-brand {
+      text-align: center;
+    }
+    .footer-nav {
+      justify-content: center;
+    }
+  }
+
+  @media (max-width: 800px) {
+    .footer-bottom {
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 0.4rem;
+    }
+  }
+
+  /* Hide the footer nav on mobile — the same five links live in the
+     always-accessible hamburger nav at the top, so they're redundant
+     here at narrow widths where they would otherwise wrap into a messy
+     pile below the brand block. The brand mark + tagline carry the
+     footer on its own at small sizes. */
+  @media (max-width: 768px) {
+    .footer-nav {
+      display: none;
+    }
+    /* With the nav gone, the brand block sits alone — let it center
+       in the available space instead of being pinned to the left edge
+       by the space-between justification. */
+    .footer-inner {
+      justify-content: center;
+      text-align: center;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .spots-mid, .spots-front,
+    .canopy-scene { animation: none; }
+    /* SMIL animations inside .canopy-scene (animateTransform, animated
+       seed in the turbulence filter) can't be disabled via CSS — they'd
+       need to be paused with JS or removed. We leave them running here;
+       motion-sensitive users will still see displacement and translate
+       inside the canopy, but the heavy CSS animations on spots stop. */
+    html { scroll-behavior: auto; }
+  }
+
+/* ─── 2. PAGE SECTIONS + GALLERY ──────────────────────────── */
+  /* =================================================================
+     PER-PAGE CSS (loaded on top of the shared site CSS in <head>).
+     Covers the intro gradient at the top, the page section styling,
+     and (for gallery.html only) the bento grid + lightbox.
+     ================================================================= */
+
+  .page-intro-gradient {
+    width: 100%;
+    height: var(--hero-overlap);
+    background: linear-gradient(
+      to bottom,
+      var(--shadow) 0%,
+      var(--page-color) 100%
+    );
+  }
+
+  .page-section {
+    width: 100%;
+    padding: 4rem 8vw 6rem;
+    color: #6b6e4a;
+    background: var(--page-color);
+  }
+
+  .page-section h1 {
+    font-family: 'Cormorant Garamond', 'Georgia', serif;
+    font-size: clamp(2.5rem, 5vw, 4rem);
+    font-weight: 300;
+    font-style: italic;
+    color: #5a5d3e;
+    margin-bottom: 1.5rem;
+    line-height: 1.1;
+  }
+  .page-section h2 {
+    font-family: 'Cormorant Garamond', 'Georgia', serif;
+    font-size: clamp(1.6rem, 3vw, 2.2rem);
+    font-weight: 400;
+    font-style: italic;
+    color: #5a5d3e;
+    margin-top: 3rem;
+    margin-bottom: 1rem;
+  }
+  .page-section p {
+    font-family: 'Cormorant Garamond', 'Georgia', serif;
+    font-size: 1.15rem;
+    line-height: 1.7;
+    max-width: 60ch;
+    margin-bottom: 1.2rem;
+    color: #6b6e4a;
+  }
+
+  /* GALLERY GRID */
+  .gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.75rem;
+    margin-top: 3rem;
+    max-width: 1300px;
+  }
+
+  .gallery-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 4px;
+    aspect-ratio: 4 / 3;
+    background: var(--shadow);
+    transition: transform 0.3s ease;
+    cursor: pointer;
+    border: none;
+    padding: 0;
+    margin: 0;
+    width: 100%;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+  }
+  .gallery-card:nth-child(5n+2) { aspect-ratio: 3 / 4; }
+  .gallery-card:nth-child(7n+3) { aspect-ratio: 16 / 10; }
+  .gallery-card:nth-child(3n+1) { background-color: #EFEED6; }
+  .gallery-card:nth-child(4n+2) { background-color: #E9ECDE; }
+  .gallery-card:nth-child(5n+3) { background-color: #DBE2CA; }
+  .gallery-card:hover { transform: translateY(-3px); }
+
+  .gallery-card-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .gallery-card-title {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    background: rgba(90, 93, 62, 0.55);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+  }
+  .gallery-card:hover .gallery-card-title,
+  .gallery-card:focus-visible .gallery-card-title {
+    opacity: 1;
+  }
+  .gallery-card-title span {
+    font-family: 'Cormorant Garamond', 'Georgia', serif;
+    font-style: italic;
+    font-size: 1.5rem;
+    color: #ffffff;
+    text-align: center;
+    line-height: 1.2;
+  }
+
+  /* LIGHTBOX */
+  .lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    background:
+      radial-gradient(
+        ellipse at center,
+        rgba(255, 255, 255, 0.30) 0%,
+        rgba(216, 221, 198, 0.55) 60%,
+        rgba(216, 221, 198, 0.80) 100%
+      );
+    -webkit-backdrop-filter: blur(18px);
+            backdrop-filter: blur(18px);
+  }
+  .lightbox.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .lightbox-inner {
+    display: flex;
+    flex-direction: row;
+    gap: 2.5rem;
+    width: 100%;
+    max-width: 1100px;
+    max-height: 85vh;
+    background: rgba(255, 255, 255, 0.92);
+    border-radius: 6px;
+    padding: 2.5rem;
+    box-shadow: 0 30px 80px rgba(60, 70, 40, 0.25);
+    overflow: hidden;
+  }
+
+  .lightbox-image-wrap {
+    flex: 0 0 55%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: 4px;
+    background: var(--shadow);
+  }
+  .lightbox-image-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .lightbox-text {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+  }
+  .lightbox-title {
+    font-family: 'Cormorant Garamond', 'Georgia', serif;
+    font-size: 2rem;
+    font-style: italic;
+    font-weight: 300;
+    color: #5a5d3e;
+    margin-bottom: 0.5rem;
+    line-height: 1.15;
+  }
+  .lightbox-subhead {
+    font-family: 'Helvetica Neue', sans-serif;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.25em;
+    color: #8c8f74;
+    margin-bottom: 1.5rem;
+  }
+  .lightbox-info {
+    font-family: 'Cormorant Garamond', 'Georgia', serif;
+    font-size: 1.1rem;
+    line-height: 1.7;
+    color: #6b6e4a;
+  }
+
+  .lightbox-close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(90, 93, 62, 0.2);
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #5a5d3e;
+    font-size: 1.2rem;
+    line-height: 1;
+    z-index: 10;
+    transition: background 0.2s ease;
+  }
+  .lightbox-close:hover {
+    background: #ffffff;
+  }
+
+  @media (max-width: 800px) {
+    .lightbox-inner {
+      flex-direction: column;
+      padding: 1.5rem;
+      max-height: 90vh;
+    }
+    .lightbox-image-wrap {
+      flex: 0 0 auto;
+      max-height: 45vh;
+    }
+    .lightbox-title { font-size: 1.6rem; }
+  }
+
+/* ─── 3. HAMBURGER X-ANIMATION ────────────────────────────── */
+/* Originally only declared in index.html; moved here so every
+   page's hamburger animates to an X when the nav opens. */
+  /* X-animation when hamburger is open — needs to be after the script
+     so the .open class on the button gets respected. */
+  .nav-toggle.open span:nth-child(1) {
+    transform: translateY(8px) rotate(45deg);
+  }
+  .nav-toggle.open span:nth-child(2) {
+    opacity: 0;
+  }
+  .nav-toggle.open span:nth-child(3) {
+    transform: translateY(-8px) rotate(-45deg);
+  }
