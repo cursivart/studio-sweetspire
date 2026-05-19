@@ -28,6 +28,27 @@
        sage/cream palette without clashing. */
     --accent: #c9a14a;
 
+    /* ─── Semantic text + surface roles ───────────────────────────
+       Named by what they DO, not what they look like, so seasonal
+       overrides (autumn, winter, etc.) just redeclare these values.
+       --text-strong   headings, primary body, key emphasis
+       --text-mid      secondary body, captions
+       --text-soft     muted labels, nav link rest state, footer marks
+       --text-on-hero  text on the dark hero background (nav bar links)
+       --surface-card  the off-white pulled up onto raised surfaces
+                       (e.g. nav-link active pill background) */
+    --text-strong:   #5a5d3e;
+    --text-mid:      #6b6e4a;
+    --text-soft:     #8c8f74;
+    --text-on-hero:  #ffffff;
+    --surface-card:  #ffffff;
+
+    /* Gallery card placeholder backgrounds — three subtle variants
+       cycled across the bento grid via :nth-child rules. */
+    --gallery-tone-1: #EFEED6;
+    --gallery-tone-2: #E9ECDE;
+    --gallery-tone-3: #DBE2CA;
+
     /* How far the .below-hero section overlaps up into the hero. This is
        the SINGLE source of truth — used both for the negative margin
        that creates the overlap and for the gradient stops that fade the
@@ -185,7 +206,7 @@
     font-size: clamp(3rem, 8vw, 6rem);
     font-weight: 300;
     letter-spacing: 0.02em;
-    color: #ffffff;
+    color: var(--text-on-hero);
     font-style: italic;
     /* Soft glow to keep the title legible whether sitting on cream or shadow */
     text-shadow: 0 2px 30px rgba(0, 0, 0, 0.25), 0 0 60px rgba(0, 0, 0, 0.15);
@@ -194,7 +215,7 @@
     font-size: 0.85rem;
     letter-spacing: 0.4em;
     text-transform: uppercase;
-    color: #8c8f74; /* desaturated medium-green for "creative studio" */
+    color: var(--text-soft); /* desaturated medium-green for "creative studio" */
     margin-top: 1.5rem;
     font-family: 'Helvetica Neue', sans-serif;
     font-weight: 400;
@@ -323,7 +344,7 @@
   }
 
   .nav-links a {
-    color: #8c8f74; /* matches the "creative studio" subtitle */
+    color: var(--text-soft); /* matches the "creative studio" subtitle */
     text-decoration: none;
     font-family: 'Helvetica Neue', sans-serif;
     font-weight: 500;
@@ -373,7 +394,7 @@
     display: block;
     width: 28px;
     height: 2px;
-    background: #ffffff;
+    background: var(--surface-card);
     transition: transform 0.3s ease, opacity 0.3s ease;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
   }
@@ -423,7 +444,7 @@
     /* Top padding pushes content below the overlap zone so it starts at
        the seam, not inside the canopy. */
     padding: var(--hero-overlap) 8vw 6rem;
-    color: #5a5d3e;
+    color: var(--text-strong);
     /* The opacity gradient exists ONLY inside the overlap zone — the
        top --hero-overlap of the section's height. The section's top
        edge is fully transparent (so the canopy reads through cleanly),
@@ -454,7 +475,7 @@
     font-weight: 300;
     font-style: italic;
     margin-bottom: 1.5rem;
-    color: #5a5d3e;
+    color: var(--text-strong);
   }
 
   .section h3 {
@@ -463,7 +484,7 @@
     font-style: italic;
     margin-top: 2.5rem;
     margin-bottom: 1rem;
-    color: #5a5d3e;
+    color: var(--text-strong);
     letter-spacing: 0.01em;
   }
 
@@ -472,7 +493,7 @@
     line-height: 1.7;
     max-width: 60ch;
     margin-bottom: 1.2rem;
-    color: #6b6e4a;
+    color: var(--text-mid);
   }
 
   /* Services list — kept understated, no bullets, just a hairline rule
@@ -488,13 +509,13 @@
     line-height: 1.65;
     padding: 0.85rem 0;
     border-top: 1px solid rgba(90, 93, 62, 0.18);
-    color: #6b6e4a;
+    color: var(--text-mid);
   }
   .section .services li:last-child {
     border-bottom: 1px solid rgba(90, 93, 62, 0.18);
   }
   .section .services strong {
-    color: #5a5d3e;
+    color: var(--text-strong);
     font-weight: 500;
   }
 
@@ -505,8 +526,8 @@
      doesn't fight the dappled-light feeling of the rest of the page.
      ------------------------------------------------------------------ */
   .site-footer {
-    background: #ffffff;
-    color: #5a5d3e;
+    background: var(--surface-card);
+    color: var(--text-strong);
     padding: 4rem 8vw 2rem;
     font-family: 'Cormorant Garamond', 'Georgia', serif;
   }
@@ -529,7 +550,7 @@
     font-size: 1.8rem;
     font-style: italic;
     font-weight: 300;
-    color: #5a5d3e;
+    color: var(--text-strong);
     margin: 0;
     line-height: 1;
   }
@@ -538,7 +559,7 @@
     font-size: 0.7rem;
     letter-spacing: 0.4em;
     text-transform: uppercase;
-    color: #6b6e4a;
+    color: var(--text-mid);
     margin-top: 0.6rem;
     font-weight: 300;
   }
@@ -554,7 +575,7 @@
     font-size: 0.75rem;
     letter-spacing: 0.3em;
     text-transform: uppercase;
-    color: #8c8f74; /* matches top nav + "creative studio" subtitle */
+    color: var(--text-soft); /* matches top nav + "creative studio" subtitle */
     text-decoration: none;
     font-weight: 500;
     transition: opacity 0.2s ease;
@@ -582,7 +603,7 @@
   .footer-bottom p {
     font-family: 'Helvetica Neue', sans-serif;
     font-size: 0.75rem;
-    color: #8a8d6e;
+    color: var(--text-soft);
     margin: 0;
     letter-spacing: 0.05em;
   }
@@ -664,7 +685,7 @@
   .page-section {
     width: 100%;
     padding: 4rem 8vw 6rem;
-    color: #6b6e4a;
+    color: var(--text-mid);
     background: var(--page-color);
   }
 
@@ -673,7 +694,7 @@
     font-size: clamp(2.5rem, 5vw, 4rem);
     font-weight: 300;
     font-style: italic;
-    color: #5a5d3e;
+    color: var(--text-strong);
     margin-bottom: 1.5rem;
     line-height: 1.1;
   }
@@ -682,7 +703,7 @@
     font-size: clamp(1.6rem, 3vw, 2.2rem);
     font-weight: 400;
     font-style: italic;
-    color: #5a5d3e;
+    color: var(--text-strong);
     margin-top: 3rem;
     margin-bottom: 1rem;
   }
@@ -692,7 +713,7 @@
     line-height: 1.7;
     max-width: 60ch;
     margin-bottom: 1.2rem;
-    color: #6b6e4a;
+    color: var(--text-mid);
   }
 
   /* GALLERY GRID */
@@ -722,9 +743,9 @@
   }
   .gallery-card:nth-child(5n+2) { aspect-ratio: 3 / 4; }
   .gallery-card:nth-child(7n+3) { aspect-ratio: 16 / 10; }
-  .gallery-card:nth-child(3n+1) { background-color: #EFEED6; }
-  .gallery-card:nth-child(4n+2) { background-color: #E9ECDE; }
-  .gallery-card:nth-child(5n+3) { background-color: #DBE2CA; }
+  .gallery-card:nth-child(3n+1) { background-color: var(--gallery-tone-1); }
+  .gallery-card:nth-child(4n+2) { background-color: var(--gallery-tone-2); }
+  .gallery-card:nth-child(5n+3) { background-color: var(--gallery-tone-3); }
   .gallery-card:hover { transform: translateY(-3px); }
 
   .gallery-card-img {
@@ -756,7 +777,7 @@
     font-family: 'Cormorant Garamond', 'Georgia', serif;
     font-style: italic;
     font-size: 1.5rem;
-    color: #ffffff;
+    color: var(--text-on-hero);
     text-align: center;
     line-height: 1.2;
   }
@@ -831,7 +852,7 @@
     font-size: 2rem;
     font-style: italic;
     font-weight: 300;
-    color: #5a5d3e;
+    color: var(--text-strong);
     margin-bottom: 0.5rem;
     line-height: 1.15;
   }
@@ -840,14 +861,14 @@
     font-size: 0.8rem;
     text-transform: uppercase;
     letter-spacing: 0.25em;
-    color: #8c8f74;
+    color: var(--text-soft);
     margin-bottom: 1.5rem;
   }
   .lightbox-info {
     font-family: 'Cormorant Garamond', 'Georgia', serif;
     font-size: 1.1rem;
     line-height: 1.7;
-    color: #6b6e4a;
+    color: var(--text-mid);
   }
 
   .lightbox-close {
@@ -863,14 +884,14 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #5a5d3e;
+    color: var(--text-strong);
     font-size: 1.2rem;
     line-height: 1;
     z-index: 10;
     transition: background 0.2s ease;
   }
   .lightbox-close:hover {
-    background: #ffffff;
+    background: var(--surface-card);
   }
 
   @media (max-width: 800px) {
