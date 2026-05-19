@@ -172,6 +172,23 @@
     50%      { opacity: 0.9; }
   }
 
+  /* ------------------------------------------------------------------
+     STATIC-CANOPY MODE
+     Added to <body> by scripts.js when the device looks
+     resource-constrained (mobile, slow network, save-data, or the
+     user has reduced-motion / reduced-data preferences set).
+     The JS also strips the animated SVG filter and SMIL <animate>
+     elements off the canopy; this CSS rule covers the CSS-driven
+     spot drift/breathing so nothing keeps repainting.
+     The scene still renders — it just stops moving.
+     (The existing @media (prefers-reduced-motion) block further down
+     also pauses these animations as a no-JS fallback.)
+     ------------------------------------------------------------------ */
+  .static-canopy .spots-mid,
+  .static-canopy .spots-front {
+    animation: none;
+  }
+
   /* (gradient transition is now inside .section as a background gradient
      rather than an overlay element) */
 
